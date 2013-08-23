@@ -43,7 +43,7 @@ class Autowp_Filter_Filename_Safe implements Zend_Filter_Interface
      */
     public function filter($value)
     {
-        $transliteration = new Project_Filter_Transliteration();
+        $transliteration = new Autowp_Filter_Transliteration();
 
         $value = $transliteration->filter($value);
         $value = mb_strtolower($value);
