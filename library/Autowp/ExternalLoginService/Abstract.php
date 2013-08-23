@@ -15,8 +15,14 @@ abstract class Autowp_ExternalLoginService_Abstract
 
     /**
      * @param array $params
+     * @return bool
      */
     abstract public function callback(array $params);
+
+    /**
+     * @return array
+     */
+    abstract public function getData();
 
     public function __construct(array $options)
     {

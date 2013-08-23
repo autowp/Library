@@ -20,7 +20,6 @@ class Autowp_ExternalLoginService_Factory
     public function getService($service)
     {
         $service = trim($service);
-
         if (!isset($this->_options[$service])) {
             throw new Exception("Service '$service' not found");
         }
