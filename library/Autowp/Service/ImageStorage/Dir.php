@@ -13,19 +13,37 @@ class Autowp_Service_ImageStorage_Dir
     protected $_url;
 
     /**
-     * @param array $options
+     * @var Autowp_Service_ImageStorage_NamingStrategy_Abstract
      */
-    public function __construct(array $options)
+    protected $_namingStrategy;
+
+    /**
+     * @param array $options
+     * @throws Autowp_Service_ImageStorage_Exception
+     */
+    public function __construct(array $options = array())
     {
-        $defaults = array(
-            'path' => null,
-            'dir'  => null
-        );
+        $this->setOptions($options);
+    }
 
-        $options = array_merge($defaults, $options);
+    /**
+     * @param array $options
+     * @return Autowp_Service_ImageStorage_Dir
+     * @throws Autowp_Service_ImageStorage_Exception
+     */
+    public function setOptions(array $options)
+    {
+        foreach ($options as $key => $value) {
+            $method = 'set' . ucfirst($key);
 
-        $this->setPath($options['path']);
-        $this->setUrl($options['url']);
+            if (method_exists($this, $method)) {
+                $this->$method($value);
+            } else {
+                $this->_raise("Unexpected option '$key'");
+            }
+        }
+
+        return $this;
     }
 
     /**
@@ -35,15 +53,13 @@ class Autowp_Service_ImageStorage_Dir
     public function setPath($path)
     {
         if (!is_string($path)) {
-            $message = "Path must be a string";
-            throw new Autowp_Service_ImageStorage_Exception($message);
+            return $this->_raise("Path must be a string");
         }
 
         $path = trim($path);
 
         if (!$path) {
-            $message = "Path cannot be empty, '$path' given";
-            throw new Autowp_Service_ImageStorage_Exception($message);
+            return $this->_raise("Path cannot be empty, '$path' given");
         }
 
         $this->_path = rtrim($path, DIRECTORY_SEPARATOR);
@@ -80,5 +96,52 @@ class Autowp_Service_ImageStorage_Dir
     public function getUrl()
     {
         return $this->_url;
+    }
+
+    /**
+     * @param string|array|Autowp_Service_ImageStorage_NamingStrategy_Abstract $strategy
+     * @throws Autowp_Service_ImageStorage_Exception
+     * @return Autowp_Service_ImageStorage_Dir
+     */
+    public function setNamingStrategy($strategy)
+    {
+        if (!$strategy instanceof Autowp_Service_ImageStorage_NamingStrategy_Abstract) {
+            if (is_array($strategy)) {
+                $strategyName = $strategy['strategy'];
+                $options = isset($strategy['options']) ? $strategy['options'] : array();
+            } else {
+                $strategyName = $strategy;
+                $options = array();
+            }
+
+            $className = 'Autowp_Service_ImageStorage_NamingStrategy_' . ucfirst($strategyName);
+            $strategy = new $className($options);
+            if (!$strategy instanceof Autowp_Service_ImageStorage_NamingStrategy_Abstract) {
+                return $this->_raise("$className is not naming strategy");
+            }
+        }
+
+        $strategy->setDir($this->_path);
+
+        $this->_namingStrategy = $strategy;
+
+        return $this;
+    }
+
+    /**
+     * @return Autowp_Service_ImageStorage_NamingStrategy_Abstract
+     */
+    public function getNamingStrategy()
+    {
+        return $this->_namingStrategy;
+    }
+
+    /**
+     * @param string $message
+     * @throws Autowp_Service_ImageStorage_Exception
+     */
+    protected function _raise($message)
+    {
+        throw new Autowp_Service_ImageStorage_Exception($message);
     }
 }

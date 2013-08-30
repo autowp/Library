@@ -1,7 +1,17 @@
 <?php
 
+/**
+ * @author dima
+ * @todo add moveToDir method
+ * @todo images lifetime support
+ * @todo option to enable randomization of filename for prevent caching
+ */
 class Autowp_Service_ImageStorage
 {
+    const EXTENSION_DEFAULT = 'jpg';
+
+    const LOCK_MAX_ATTEMPTS = 10;
+
     /**
      * Zend_Db_Adapter_Abstract object.
      *
@@ -30,6 +40,16 @@ class Autowp_Service_ImageStorage
     protected $_formatedImageTableName = 'formated_image';
 
     /**
+     * @var Autowp_Service_ImageStorage_DbTable_Dir
+     */
+    protected $_dirTable = null;
+
+    /**
+     * @var string
+     */
+    protected $_dirTableName = 'image_dir';
+
+    /**
      * @var array
      */
     protected $_dirs = array();
@@ -55,14 +75,9 @@ class Autowp_Service_ImageStorage
     protected $_formatedImageDirName = null;
 
     /**
-     * @var int
+     * @var Autowp_Image_Sampler
      */
-    protected $_resizeFilter = Imagick::FILTER_CUBIC;
-
-    /**
-     * @var float
-     */
-    protected $_resizeBlur = 1;
+    protected $_imageSampler = null;
 
     /**
      * @param array $options
@@ -105,12 +120,51 @@ class Autowp_Service_ImageStorage
     }
 
     /**
+     * @param array|Autowp_Image_Sampler $options
+     * @return Autowp_Service_ImageStorage
+     */
+    public function setImageSampler($options)
+    {
+        if ($options instanceof Autowp_Image_Sampler) {
+            $imageSampler = $options;
+        } elseif (is_array($options)) {
+            $imageSampler = new Autowp_Image_Sampler($options);
+        } else {
+            $message = "Unexpected imageSampler options. Array or object excepcted";
+            return $this->_raise($message);
+        }
+
+        $this->_imageSampler = $imageSampler;
+
+        return $this;
+    }
+
+    /**
+     * @return Autowp_Image_Sampler
+     */
+    public function getImageSampler()
+    {
+        return $this->_imageSampler;
+    }
+
+    /**
      * @param string $tableName
      * @return Autowp_Service_ImageStorage
      */
     public function setFormatedImageTableName($tableName)
     {
         $this->_formatedImageTableName = $tableName;
+
+        return $this;
+    }
+
+    /**
+     * @param string $tableName
+     * @return Autowp_Service_ImageStorage
+     */
+    public function setDirTableName($tableName)
+    {
+        $this->_dirTableName = $tableName;
 
         return $this;
     }
@@ -208,7 +262,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string $formatName
-     * @param Autowp_Service_ImageStorage_Format|mixed $format
+     * @param Autowp_Image_Sampler_Format|mixed $format
      * @return Autowp_Service_ImageStorage
      * @throws Autowp_Service_ImageStorage_Exception
      */
@@ -217,8 +271,8 @@ class Autowp_Service_ImageStorage
         if (isset($this->_formats[$formatName])) {
             $this->_raise("Format '$formatName' alredy registered");
         }
-        if (!$format instanceof Autowp_Service_ImageStorage_Format) {
-            $format = new Autowp_Service_ImageStorage_Format($format);
+        if (!$format instanceof Autowp_Image_Sampler_Format) {
+            $format = new Autowp_Image_Sampler_Format($format);
         }
         $this->_formats[$formatName] = $format;
 
@@ -227,7 +281,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string $dirName
-     * @return Autowp_Service_ImageStorage_Format
+     * @return Autowp_Image_Sampler_Format
      */
     public function getFormat($formatName)
     {
@@ -241,28 +295,6 @@ class Autowp_Service_ImageStorage
     public function setFormatedImageDirName($dirName)
     {
         $this->_formatedImageDirName = $dirName;
-
-        return $this;
-    }
-
-    /**
-     * @param int $filter
-     * @return Project_Image_Sampler
-     */
-    public function setResizeFilter($filter)
-    {
-        $this->_resizeFilter = $filter;
-
-        return $this;
-    }
-
-    /**
-     * @param float $blur
-     * @return Project_Image_Sampler
-     */
-    public function setResizeBlur($blur)
-    {
-        $this->_resizeBlur = $blur;
 
         return $this;
     }
@@ -307,6 +339,21 @@ class Autowp_Service_ImageStorage
     }
 
     /**
+     * @return Autowp_Service_ImageStorage_DbTable_Dir
+     */
+    protected function _getDirTable()
+    {
+        if (null === $this->_dirTable) {
+            $this->_dirTable = new Autowp_Service_ImageStorage_DbTable_Dir(array(
+                Zend_Db_Table_Abstract::ADAPTER => $this->_db,
+                Zend_Db_Table_Abstract::NAME    => $this->_dirTableName,
+            ));
+        }
+
+        return $this->_dirTable;
+    }
+
+    /**
      * @param Zend_Db_Table_Row $imageRow
      * @return Autowp_Service_ImageStorage_Image
      */
@@ -339,10 +386,15 @@ class Autowp_Service_ImageStorage
      */
     public function getImage($imageId)
     {
+        $id = (int)$imageId;
+        if (strlen($id) != strlen($imageId)) {
+            return $this->_raise("Image id mus be int. `$imageId` given");
+        }
+
         $imageTable = $this->_getImageTable();
 
         $imageRow = $imageTable->fetchRow(array(
-            'id = ?' => $imageId
+            'id = ?' => $id
         ));
 
         if (!$imageRow) {
@@ -350,6 +402,42 @@ class Autowp_Service_ImageStorage
         }
 
         return $this->_buildImageResult($imageRow);
+    }
+
+    /**
+     * @param int $imageId
+     * @return string
+     * @throws Autowp_Service_ImageStorage_Exception
+     */
+    public function getImageBlob($imageId)
+    {
+        $id = (int)$imageId;
+        if (strlen($id) != strlen($imageId)) {
+            return $this->_raise("Image id mus be int. `$imageId` given");
+        }
+
+        $imageTable = $this->_getImageTable();
+
+        $imageRow = $imageTable->fetchRow(array(
+            'id = ?' => $id
+        ));
+
+        if (!$imageRow) {
+            return null;
+        }
+
+        $dir = $this->getDir($imageRow->dir);
+        if (!$dir) {
+            $this->_raise("Dir '$dir' not defined");
+        }
+
+        $filepath = $dir->getPath() . DIRECTORY_SEPARATOR . $imageRow->filepath;
+
+        if (!file_exists($filepath)) {
+            return $this->_raise("File `$filepath` not found");
+        }
+
+        return file_get_contents($filepath);
     }
 
     /**
@@ -391,7 +479,7 @@ class Autowp_Service_ImageStorage
                 $this->_raise("Dir '$dir' not defined");
             }
 
-            $srcFilePath = $dir . DIRECTORY_SEPARATOR . $imageRow . $imageRow->filepath;
+            $srcFilePath = $dir->getPath() . DIRECTORY_SEPARATOR . $imageRow->filepath;
 
             $imagick = new Imagick();
             $imagick->readImage($srcFilePath);
@@ -402,17 +490,24 @@ class Autowp_Service_ImageStorage
                 $this->_raise("Format `$formatName` not found");
             }
 
-            $this->applyFormat($imagick, $format);
+            $sampler = $this->getImageSampler();
+            if (!$sampler) {
+                return $this->_raise("Image sampler not initialized");
+            }
+            $sampler->convertImagick($imagick, $format);
 
             // store result
+            $newPath = implode(DIRECTORY_SEPARATOR, array(
+                $imageRow->dir,
+                $formatName,
+                $imageRow->filepath
+            ));
+            $pi = pathinfo($newPath);
             $formatedImageId = $this->addImageFromImagick(
                 $imagick, $this->_formatedImageDirName,
                 array(
-                    'name' => $imageId,
-                    'path' => implode(DIRECTORY_SEPARATOR, array(
-                        $formatName,
-                        $imageId % 1000
-                    ))
+                    'extension' => $pi['extension'],
+                    'pattern'   => $pi['dirname'] . DIRECTORY_SEPARATOR . $pi['filename']
                 )
             );
 
@@ -424,6 +519,7 @@ class Autowp_Service_ImageStorage
                 'image_id'          => $imageId,
                 'formated_image_id' => $formatedImageId
             ));
+            $formatedImageRow->save();
 
             // result
             $destImageRow = $this->_getImageTable()->fetchRow(array(
@@ -444,14 +540,24 @@ class Autowp_Service_ImageStorage
         $imageTable = $this->_getImageTable();
 
         $imageRow = $imageTable->fetchRow(array(
-            'id = ?' => $imageId
+            'id = ?' => (int)$imageId
         ));
 
         if (!$imageRow) {
             $this->_raise("Image '$imageId' not found");
         }
 
-        $dir = $this->_getDir($imageRow->dir);
+        $this->flush(array(
+            'image' => $imageRow->id
+        ));
+
+        // to save remove formated image
+        $this->_getFormatedImageTable()->delete(array(
+            'formated_image_id = ?' => $imageRow->id
+        ));
+
+        // remove file & row
+        $dir = $this->getDir($imageRow->dir);
         if (!$dir) {
             $this->_raise("Dir '$dir' not defined");
         }
@@ -461,55 +567,59 @@ class Autowp_Service_ImageStorage
             $imageRow->filepath
         ));
 
-        if (file_exists($filepath)) {
-            unlink($filepath);
-        }
-
+        // important to delete row first
         $imageRow->delete();
+
+        if (file_exists($filepath)) {
+            if (!unlink($filepath)) {
+                return $this->_raise("Error unlink `$filepath`");
+            }
+        }
 
         return $this;
     }
 
     /**
-     * @param Autowp_Service_ImageStorage_Dir $dir
+     * @param string $dirName
      * @param string $ext
      * @param array $options
      * @return string
      * @throws Autowp_Service_ImageStorage_Exception
      */
-    protected function _createImagePath(Autowp_Service_ImageStorage_Dir $dir, $ext, array $options = array())
+    protected function _createImagePath($dirName, array $options = array())
     {
-        $defaults = array(
-            'name' => null,
-            'path' => null
-        );
-        $options = array_merge($defaults, $options);
+        $dir = $this->getDir($dirName);
+        if (!$dir) {
+            $this->_raise("Dir '$dirName' not defined");
+        }
 
         $dirPath = $dir->getPath();
 
-        $pathComponents = explode(DIRECTORY_SEPARATOR, $options['path']);
-        $filter = new Autowp_Filter_Filename_Safe();
-        $filteredPath = array();
-        foreach ($pathComponents as $pathComponent) {
-            if (strlen($pathComponent)) {
-                $pathComponent = $filter->filter($pathComponent);
-                $filteredPath[] = $pathComponent;
-            }
+        $namingStrategy = $dir->getNamingStrategy();
+        if (!$namingStrategy) {
+            $message = "Naming strategy not initialized for `$dirName`";
+            $this->_raise($message);
         }
 
-        $filteredPath = implode(DIRECTORY_SEPARATOR, $filteredPath) . DIRECTORY_SEPARATOR;
 
-        $filenameGenerator = new Autowp_Service_ImageStorage_FilenameGenerator(
-            $dirPath . $filteredPath, $options['name'], $ext);
+        $options = array_merge(array(
+            'count' => $this->getDirCounter($dirName),
+        ), $options);
 
-        $destFileName = $filenameGenerator->getNext();
-        $destFilePath = $dirPath . $filteredPath . DIRECTORY_SEPARATOR . $destFileName;
+        if (!isset($options['extension'])) {
+            $options['extension'] = self::EXTENSION_DEFAULT;
+        }
+
+        $destFileName = $namingStrategy->generate($options);
+        $destFilePath = $dirPath . DIRECTORY_SEPARATOR . $destFileName;
 
         $destDir = dirname($destFilePath);
         if (!is_dir($destDir)) {
+            $old = umask(0);
             if (!mkdir($destDir, $this->_dirMode, true)) {
                 $this->_raise("Cannot create dir '$destDir'");
             }
+            umask($old);
         }
 
         return $destFileName;
@@ -539,6 +649,8 @@ class Autowp_Service_ImageStorage
             'date_add' => new Zend_Db_Expr('now()')
         ));
         $imageRow->save();
+
+        $this->incDirCounter($dirName);
 
         return $imageRow->id;
     }
@@ -571,6 +683,69 @@ class Autowp_Service_ImageStorage
     }
 
     /**
+     * @param string $dirName
+     * @param array $options
+     * @param int $width
+     * @param int $height
+     * @param Closure $callback
+     * @return int
+     */
+    protected function _generateLockWrite($dirName, array $options, $width, $height, Closure $callback)
+    {
+        $dir = $this->getDir($dirName);
+        if (!$dir) {
+            $this->_raise("Dir '$dirName' not defined");
+        }
+
+        $dirPath = $dir->getPath();
+
+        $maxAttempts = self::LOCK_MAX_ATTEMPTS;
+        $success = false;
+        do {
+            $maxAttempts--;
+
+            $destFileName = $this->_createImagePath($dirName, $options);
+            $destFilePath = $dirPath . DIRECTORY_SEPARATOR . $destFileName;
+
+            $fp = fopen($destFilePath, 'c+');
+            if (!$fp) {
+                $this->_raise("Cannot open file '$destFilePath'");
+            }
+
+            if (!flock($fp, LOCK_EX | LOCK_NB)) {
+                // already locked, try next file
+                return $this->_raise("already locked, try next file");
+                fclose($fp);
+                continue;
+            }
+
+            if (false !== fgetc($fp)) {
+                // not empty, try next file
+                return $this->_raise("not empty, try next file $destFilePath");
+                flock($fp, LOCK_UN);
+                fclose($fp);
+                continue;
+            }
+
+            $callback($fp);
+
+            flock($fp, LOCK_UN);
+            fclose($fp);
+
+            $success = true;
+
+        } while (($maxAttempts > 0) && !$success);
+
+        if (!$success) {
+            return $this->_raise("Cannot save to `$destFilePath` after few attempts");
+        }
+
+        $this->_chmodFile($destFilePath);
+
+        return $this->_storeImageToDb($dirName, $destFileName, $width, $height);
+    }
+
+    /**
      * @param Imagick $imagick
      * @param string $dirName
      * @param array $options
@@ -585,21 +760,11 @@ class Autowp_Service_ImageStorage
             $this->_raise("Failed to get image size ($width x $height)");
         }
 
-        $dir = $this->getDir($dirName);
-        if (!$dir) {
-            $this->_raise("Dir '$dirName' not defined");
-        }
-        $destFileName = $this->_createImagePath($dir, 'jpg', $options);
-
-        $dirPath = $dir->getPath();
-        $destFilePath = $dirPath . DIRECTORY_SEPARATOR . $destFileName;
-
-        if (!$imagick->writeImage($destFilePath)) {
-            $this->_raise("Cannot save imagick to '$destFilePath'");
-        }
-        $this->_chmodFile($destFilePath);
-
-        return $this->_storeImageToDb($dirName, $destFileName, $width, $height);
+        return $this->_generateLockWrite($dirName, $options, $width, $height, function($fp) use ($imagick) {
+            if (!$imagick->writeImageFile($fp)) {
+                $this->_raise("Imagick::writeImageFile error");
+            }
+        });
     }
 
     /**
@@ -610,11 +775,6 @@ class Autowp_Service_ImageStorage
      */
     public function addImageFromFile($file, $dirName, array $options = array())
     {
-        $dir = $this->getDir($dirName);
-        if (!$dir) {
-            $this->_raise("Dir '$dirName' not defined");
-        }
-
         list($width, $height, $type) = getimagesize($file);
         $width = (int)$width;
         $height = (int)$height;
@@ -623,152 +783,32 @@ class Autowp_Service_ImageStorage
             $this->_raise("Failed to get image size of '$file' ($width x $height)");
         }
 
-        $dirPath = $dir->getPath();
-
-        $ext = null;
-        switch ($type) {
-            case IMAGETYPE_GIF:
-                $ext = 'gif';
-                break;
-            case IMAGETYPE_JPEG:
-                $ext = 'jpg';
-                break;
-            case IMAGETYPE_PNG:
-                $ext = 'png';
-                break;
-            default:
-                $this->_raise("Unsupported image type `$type`");
-        }
-
-        $destFileName = $this->_createImagePath($dir, $ext, $options);
-
-        $dirPath = $dir->getPath();
-        $destFilePath = $dirPath . DIRECTORY_SEPARATOR . $destFileName;
-
-        if (!copy($file, $destFilePath)) {
-            $this->_raise("Cannot copy file '$file' to '$destFilePath'");
-        }
-        $this->_chmodFile($destFilePath);
-
-        return $this->_storeImageToDb($dirName, $destFileName, $width, $height);
-    }
-
-    /**
-     * @param Imagick $imagick
-     * @param Autowp_Service_ImageStorage_Format $format
-     * @throws Autowp_Service_ImageStorage_Exception
-     */
-    protected function _applyFormat(Imagick $imagick,
-        Autowp_Service_ImageStorage_Format $format)
-    {
-        $bg = $format->getBackground();
-        if (!$bg) {
-            $bg = 'transparent';
-        }
-        $imagick->setBackgroundColor($bg);
-
-        $srcWidth = $imagick->getImageWidth();
-        $srcHeight = $imagick->getImageHeight();
-        $srcRatio = $srcWidth / $srcHeight;
-
-        $widthLess = $format->getWidth() && ($srcWidth <= $format->getWidth());
-        $heightLess = $format->getHeight() && ($srcHeight <= $format->getHeight());
-
-        if ( !( $widthLess && $heightLess && $options['is_not_increase'] ) ) {
-            if ($format->getWidth() && $format->getHeight()) {
-                $ratio = $format->getWidth() / $format->getHeight();
-
-                switch ($format->getFitType()) {
-                    case self::FIT_TYPE_INNER:
-
-                        // высчитываем размеры обрезания
-                        if ($ratio < $srcRatio) {
-                            // широкая картинка
-                            $cropWidth = round($srcHeight * $ratio);
-                            $cropHeight = $srcHeight;
-                            $cropLeft = floor(($srcWidth - $cropWidth) / 2);
-                            $cropTop = 0;
-                        } else {
-                            // высокая картинка
-                            $cropWidth = $srcWidth;
-                            $cropHeight = round($srcWidth / $ratio);
-                            $cropLeft = 0;
-                            $cropTop = floor(($srcHeight - $cropHeight) / 2);
-                        }
-
-                        $imagick->cropImage($cropWidth, $cropHeight, $cropLeft, $cropTop);
-                        $imagick->resizeImage(
-                            $format->getWidth(), $format->getHeight(),
-                            $this->_resizeFilter, $this->_resizeBlur, false
-                        );
-
-                        break;
-
-                    case self::FIT_TYPE_OUTER:
-
-                        // высчитываем размеры обрезания
-                        if ($ratio < $srcRatio) {
-                            $scaleWidth = $format->getWidth();
-                            $scaleHeight = round($format->getWidth() / $srcRatio);// добавляем поля сверху и снизу
-                        } else {
-                            // добавляем поля по бокам
-                            $scaleWidth = round($format->getHeight() * $srcRatio);
-                            $scaleHeight = $format->getHeight();
-                        }
-
-                        $imagick->resizeImage(
-                            $scaleWidth, $scaleHeight,
-                            $this->_resizeFilter, $this->_resizeBlur, false
-                        );
-
-                        $imagick->borderImage(
-                            $options['background'],
-                            $format->getWidth() - $scaleWidth,
-                            $format->getHeight() - $scaleHeight
-                        );
-
-                        break;
-
-                    case self::FIT_TYPE_MAXIMUM:
-
-                        // высчитываем размеры обрезания
-                        if ($ratio < $srcRatio) {
-                            $scaleWidth = $format->getWidth();
-                            $scaleHeight = round($format->getWidth() / $srcRatio);
-                        } else {
-                            // добавляем поля по бокам
-                            $scaleWidth = round($format->getHeight() * $srcRatio);
-                            $scaleHeight = $format->getHeight();
-                        }
-
-                        $imagick->resizeImage(
-                            $scaleWidth, $scaleHeight,
-                            $this->_resizeFilter, $this->_resizeBlur, false
-                        );
-
-                        break;
-
-                    default:
-                        $this->_raise("Неизвестный FIT_TYPE `{$format->getFitType()}`");
-                }
-            } else {
-
-                if ($format->getWidth()) {
-                    $scaleWidth = $format->getWidth();
-                    $scaleHeight = round($format->getWidth() / $srcRatio);
-                } else {
-                    // добавляем поля по бокам
-                    $scaleWidth = round($format->getHeight() * $srcRatio);
-                    $scaleHeight = $format->getHeight();
-                }
-
-                $imagick->resizeImage(
-                    $scaleWidth, $scaleHeight,
-                    $this->_resizeFilter, $this->_resizeBlur, false
-                );
+        if (!isset($options['extension'])) {
+            $ext = null;
+            switch ($type) {
+                case IMAGETYPE_GIF:
+                    $ext = 'gif';
+                    break;
+                case IMAGETYPE_JPEG:
+                    $ext = 'jpg';
+                    break;
+                case IMAGETYPE_PNG:
+                    $ext = 'png';
+                    break;
+                default:
+                    $this->_raise("Unsupported image type `$type`");
             }
-
+            $options['extension'] = $ext;
         }
+
+        return $this->_generateLockWrite($dirName, $options, $width, $height, function($fp) use ($file) {
+            /**
+             * @todo buffered read-write
+             */
+            if (!fwrite($fp, file_get_contents($file))) {
+                $this->_raise("fwrite error '$file'");
+            }
+        });
     }
 
     /**
@@ -793,6 +833,54 @@ class Autowp_Service_ImageStorage
         if ($options['image']) {
             $select->where($this->_formatedImageTableName . '.image_id = ?', (int)$options['image']);
         }
+
+        $rows = $this->_getFormatedImageTable()->fetchAll($select);
+
+        foreach ($rows as $row) {
+            $this->removeImage($row->formated_image_id);
+            $row->delete();
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param string $dirName
+     * @return int
+     */
+    public function getDirCounter($dirName)
+    {
+        $dirTable = $this->_getDirTable();
+        $adapter = $dirTable->getAdapter();
+        return (int)$adapter->fetchOne(
+            $adapter->select()
+                ->from($dirTable->info('name'), 'count')
+                ->where('dir = ?', $dirName)
+        );
+    }
+
+    /**
+     * @param string $dirName
+     * @return Autowp_Service_ImageStorage
+     */
+    public function incDirCounter($dirName)
+    {
+        $dirTable = $this->_getDirTable();
+
+        $row = $dirTable->fetchRow(array(
+            'dir = ?' => $dirName
+        ));
+
+        if ($row) {
+            $row->count = new Zend_Db_Expr('count + 1');
+        } else {
+            $row = $dirTable->createRow(array(
+                'dir'   => $dirName,
+                'count' => 1
+            ));
+        }
+
+        $row->save();
 
         return $this;
     }

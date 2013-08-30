@@ -17,3 +17,9 @@ CREATE TABLE `formated_image` (
     PRIMARY KEY (`image_id`, `format`),
     KEY(formated_image_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+
+CREATE TABLE `image_dir` (
+    `dir` varchar(255) NOT NULL,
+    `count` int unsigned NOT NULL,
+    PRIMARY KEY (`dir`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
