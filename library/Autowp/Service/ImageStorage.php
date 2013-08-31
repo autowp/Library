@@ -144,6 +144,9 @@ class Autowp_Service_ImageStorage
      */
     public function getImageSampler()
     {
+        if (null === $this->_imageSampler) {
+            $this->setImageSampler(array());
+        }
         return $this->_imageSampler;
     }
 
