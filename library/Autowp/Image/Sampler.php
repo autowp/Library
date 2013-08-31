@@ -155,7 +155,7 @@ class Autowp_Image_Sampler
                     );
 
                     $imagick->borderImage(
-                        $options['background'],
+                        $bg,
                         $format->getWidth() - $scaleWidth,
                         $format->getHeight() - $scaleHeight
                     );
