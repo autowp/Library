@@ -5,6 +5,7 @@
  * @todo add moveToDir method
  * @todo images lifetime support
  * @todo option to enable randomization of filename for prevent caching
+ * @tofo dontIncrease flag
  */
 class Autowp_Service_ImageStorage
 {

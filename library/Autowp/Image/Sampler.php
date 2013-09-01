@@ -3,38 +3,6 @@
 class Autowp_Image_Sampler
 {
     /**
-     * @var int
-     */
-    protected $_resizeFilter = Imagick::FILTER_CUBIC;
-
-    /**
-     * @var float
-     */
-    protected $_resizeBlur = 1;
-
-    /**
-     * @param int $filter
-     * @return Autowp_Image_Sampler
-     */
-    public function setResizeFilter($filter)
-    {
-        $this->_resizeFilter = $filter;
-
-        return $this;
-    }
-
-    /**
-     * @param float $blur
-     * @return Autowp_Image_Sampler
-     */
-    public function setResizeBlur($blur)
-    {
-        $this->_resizeBlur = $blur;
-
-        return $this;
-    }
-
-    /**
      * @param Imagick $source
      * @param array|Autowp_Image_Sampler_Format $format
      * @throws Autowp_Image_Sampler_Exception
@@ -126,11 +94,6 @@ class Autowp_Image_Sampler
                         return $this->_raise("Error crop");
                     }
 
-                    /*$imagick->resizeImage(
-                        $format->getWidth(), $format->getHeight(),
-                        $this->_resizeFilter, $this->_resizeBlur, false
-                    );*/
-
                     $imagick->scaleImage(
                         $format->getWidth(), $format->getHeight(), false
                     );
@@ -149,9 +112,8 @@ class Autowp_Image_Sampler
                         $scaleHeight = $format->getHeight();
                     }
 
-                    $imagick->resizeImage(
-                        $scaleWidth, $scaleHeight,
-                        $this->_resizeFilter, $this->_resizeBlur, false
+                    $imagick->scaleImage(
+                        $scaleWidth, $scaleHeight, false
                     );
 
                     $imagick->borderImage(
@@ -174,9 +136,8 @@ class Autowp_Image_Sampler
                         $scaleHeight = $format->getHeight();
                     }
 
-                    $imagick->resizeImage(
-                        $scaleWidth, $scaleHeight,
-                        $this->_resizeFilter, $this->_resizeBlur, false
+                    $imagick->scaleImage(
+                        $scaleWidth, $scaleHeight, false
                     );
 
                     break;
@@ -190,9 +151,8 @@ class Autowp_Image_Sampler
                 $scaleWidth = $format->getWidth();
                 $scaleHeight = round($format->getWidth() / $srcRatio);
 
-                $imagick->resizeImage(
-                    $scaleWidth, $scaleHeight,
-                    $this->_resizeFilter, $this->_resizeBlur, false
+                $imagick->scaleImage(
+                    $scaleWidth, $scaleHeight, false
                 );
 
             } elseif ($format->getHeight()) {
@@ -200,9 +160,8 @@ class Autowp_Image_Sampler
                 $scaleWidth = round($format->getHeight() * $srcRatio);
                 $scaleHeight = $format->getHeight();
 
-                $imagick->resizeImage(
-                    $scaleWidth, $scaleHeight,
-                    $this->_resizeFilter, $this->_resizeBlur, false
+                $imagick->scaleImage(
+                    $scaleWidth, $scaleHeight, false
                 );
             }
 
