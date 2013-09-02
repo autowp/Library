@@ -116,10 +116,18 @@ class Autowp_Image_Sampler
                         $scaleWidth, $scaleHeight, false
                     );
 
+                    /**
+                     * @todo 1px bug
+                     */
+                    $borderLeft = round(($format->getWidth() - $scaleWidth) / 2);
+                    $borderRight = $format->getWidth() - $scaleWidth - $borderLeft;
+                    $borderTop = round(($format->getHeight() - $scaleHeight) / 2);
+                    $borderBottom = $format->getHeight() - $scaleHeight - $borderTop;
+
                     $imagick->borderImage(
                         $bg,
-                        $format->getWidth() - $scaleWidth,
-                        $format->getHeight() - $scaleHeight
+                        $borderLeft,
+                        $borderTop
                     );
 
                     break;
