@@ -1,5 +1,7 @@
 <?php
 
+require_once 'Autowp/Service/ImageStorage/NamingStrategy/Abstract.php';
+
 class Autowp_Service_ImageStorage_NamingStrategy_Serial
     extends Autowp_Service_ImageStorage_NamingStrategy_Abstract
 {

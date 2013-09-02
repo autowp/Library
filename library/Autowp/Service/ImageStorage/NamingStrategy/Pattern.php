@@ -1,5 +1,7 @@
 <?php
 
+require_once 'Autowp/Service/ImageStorage/NamingStrategy/Abstract.php';
+
 class Autowp_Service_ImageStorage_NamingStrategy_Pattern
     extends Autowp_Service_ImageStorage_NamingStrategy_Abstract
 {
@@ -11,20 +13,18 @@ class Autowp_Service_ImageStorage_NamingStrategy_Pattern
      */
     protected function _normalizePattern($pattern)
     {
-        foreach($this->_notAllowedParts as $part) {
-            $pattern = str_replace($part, DIRECTORY_SEPARATOR, $pattern);
-        }
-
         $pattern = preg_replace('|[' . preg_quote(DIRECTORY_SEPARATOR) . ']+|isu', DIRECTORY_SEPARATOR, $pattern);
 
         $filter = new Autowp_Filter_Filename_Safe();
 
         $result = array();
-        $pattrenComponents = explode(DIRECTORY_SEPARATOR, $pattern);
-        foreach ($pattrenComponents as $component) {
-            if ($component) {
-                $filtered = $filter->filter($component);
-                $result[] = $filtered;
+        $patternComponents = explode(DIRECTORY_SEPARATOR, $pattern);
+        foreach ($patternComponents as $component) {
+            if (!in_array($component, $this->_notAllowedParts)) {
+                if ($component) {
+                    $filtered = $filter->filter($component);
+                    $result[] = $filtered;
+                }
             }
         }
 
@@ -45,7 +45,7 @@ class Autowp_Service_ImageStorage_NamingStrategy_Pattern
         $options = array_merge($defaults, $options);
 
         $ext = (string)$options['extension'];
-        $pattren = $this->_normalizePattern($options['pattern']);
+        $pattern = $this->_normalizePattern($options['pattern']);
 
         $dir = $this->getDir();
         if (!$dir) {
@@ -54,8 +54,14 @@ class Autowp_Service_ImageStorage_NamingStrategy_Pattern
 
         $idx = 0;
         do {
-            $suffix = $idx ? '_' . $idx : '';
-            $filename = $pattren . $suffix . ($ext ? '.' . $ext : '');
+            $nameComponents = array();
+            if ($pattern) {
+                $nameComponents[] = $pattern;
+            }
+            if ($idx or (!$pattern)) {
+                $nameComponents[] = $idx;
+            }
+            $filename = implode('_', $nameComponents) . ($ext ? '.' . $ext : '');
             $filePath = $dir . DIRECTORY_SEPARATOR . $filename;
             $idx++;
         } while (file_exists($filePath));

@@ -63,6 +63,11 @@ class Autowp_Filter_Filename_Safe implements Zend_Filter_Interface
             $value = '_';
         }
 
+        switch ($value) {
+            case '..': $value = '__'; break;
+            case '.':  $value = '_'; break;
+        }
+
         return $value;
     }
 
