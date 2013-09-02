@@ -9,6 +9,8 @@ class Autowp_Service_ImageStorage
 
     const LOCK_MAX_ATTEMPTS = 10;
 
+    const INSERT_MAX_ATTEMPTS = 10;
+
     /**
      * Zend_Db_Adapter_Abstract object.
      *
@@ -626,36 +628,6 @@ class Autowp_Service_ImageStorage
     }
 
     /**
-     * @param string $dirName
-     * @param string $fileDirPath
-     * @param int $width
-     * @param int $height
-     */
-    protected function _storeImageToDb($dirName, $fileDirPath, $width, $height)
-    {
-        $dir = $this->getDir($dirName);
-        if (!$dir) {
-            $this->_raise("Dir '$dirName' not defined");
-        }
-
-        $filePath = $dir->getPath() . DIRECTORY_SEPARATOR . $fileDirPath;
-
-        $imageRow = $this->_getImageTable()->createRow(array(
-            'width'    => $width,
-            'height'   => $height,
-            'dir'      => $dirName,
-            'filesize' => filesize($filePath),
-            'filepath' => $fileDirPath,
-            'date_add' => new Zend_Db_Expr('now()')
-        ));
-        $imageRow->save();
-
-        $this->incDirCounter($dirName);
-
-        return $imageRow->id;
-    }
-
-    /**
      * @param string $path
      * @throws Autowp_Service_ImageStorage_Exception
      */
@@ -699,50 +671,80 @@ class Autowp_Service_ImageStorage
 
         $dirPath = $dir->getPath();
 
-        $maxAttempts = self::LOCK_MAX_ATTEMPTS;
-        $success = false;
+        $insertAttemptsLeft = self::INSERT_MAX_ATTEMPTS;
+        $insertAttemptException = null;
         do {
-            $maxAttempts--;
 
-            $destFileName = $this->_createImagePath($dirName, $options);
-            $destFilePath = $dirPath . DIRECTORY_SEPARATOR . $destFileName;
+            $lockAttemptsLeft = self::LOCK_MAX_ATTEMPTS;
+            $success = false;
+            do {
+                $lockAttemptsLeft--;
 
-            $fp = fopen($destFilePath, 'c+');
-            if (!$fp) {
-                $this->_raise("Cannot open file '$destFilePath'");
-            }
+                $destFileName = $this->_createImagePath($dirName, $options);
+                $destFilePath = $dirPath . DIRECTORY_SEPARATOR . $destFileName;
 
-            if (!flock($fp, LOCK_EX | LOCK_NB)) {
-                // already locked, try next file
-                return $this->_raise("already locked, try next file");
-                fclose($fp);
-                continue;
-            }
+                $fp = fopen($destFilePath, 'c+');
+                if (!$fp) {
+                    $this->_raise("Cannot open file '$destFilePath'");
+                }
 
-            if (false !== fgetc($fp)) {
-                // not empty, try next file
-                return $this->_raise("not empty, try next file $destFilePath");
+                if (!flock($fp, LOCK_EX | LOCK_NB)) {
+                    // already locked, try next file
+                    return $this->_raise("already locked, try next file");
+                    fclose($fp);
+                    continue;
+                }
+
+                if (false !== fgetc($fp)) {
+                    // not empty, try next file
+                    return $this->_raise("not empty, try next file $destFilePath");
+                    flock($fp, LOCK_UN);
+                    fclose($fp);
+                    continue;
+                }
+
+                $callback($fp);
+
                 flock($fp, LOCK_UN);
                 fclose($fp);
-                continue;
+
+                $success = true;
+
+            } while (($lockAttemptsLeft > 0) && !$success);
+
+            if (!$success) {
+                return $this->_raise("Cannot save to `$destFilePath` after few attempts");
             }
 
-            $callback($fp);
+            $this->_chmodFile($destFilePath);
 
-            flock($fp, LOCK_UN);
-            fclose($fp);
+            // store to db
+            $filePath = $dir->getPath() . DIRECTORY_SEPARATOR . $destFileName;
 
-            $success = true;
+            $imageRow = $this->_getImageTable()->createRow(array(
+                'width'    => $width,
+                'height'   => $height,
+                'dir'      => $dirName,
+                'filesize' => filesize($filePath),
+                'filepath' => $destFileName,
+                'date_add' => new Zend_Db_Expr('now()')
+            ));
+            try {
+                $imageRow->save();
+                $insertAttemptException = null;
+            } catch (Zend_Db_Exception $e) {
+                // duplicate or other error
+                $insertAttemptException = $e;
+            }
+        } while (($insertAttemptsLeft > 0) && $insertAttemptException);
 
-        } while (($maxAttempts > 0) && !$success);
-
-        if (!$success) {
-            return $this->_raise("Cannot save to `$destFilePath` after few attempts");
+        if ($insertAttemptException) {
+            throw $insertAttemptException;
         }
 
-        $this->_chmodFile($destFilePath);
+        $this->incDirCounter($dirName);
 
-        return $this->_storeImageToDb($dirName, $destFileName, $width, $height);
+        return $imageRow->id;
     }
 
     /**
