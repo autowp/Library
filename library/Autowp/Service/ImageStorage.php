@@ -358,6 +358,7 @@ class Autowp_Service_ImageStorage
     /**
      * @param Zend_Db_Table_Row $imageRow
      * @return Autowp_Service_ImageStorage_Image
+     * @throws Autowp_Service_ImageStorage_Exception
      */
     protected function _buildImageResult(Zend_Db_Table_Row $imageRow)
     {
@@ -382,52 +383,12 @@ class Autowp_Service_ImageStorage
     }
 
     /**
-     * @param int $imageId
-     * @return Autowp_Service_ImageStorage_Image
-     * @throws Autowp_Service_ImageStorage_Exception
-     */
-    public function getImage($imageId)
-    {
-        $id = (int)$imageId;
-        if (strlen($id) != strlen($imageId)) {
-            return $this->_raise("Image id mus be int. `$imageId` given");
-        }
-
-        $imageTable = $this->_getImageTable();
-
-        $imageRow = $imageTable->fetchRow(array(
-            'id = ?' => $id
-        ));
-
-        if (!$imageRow) {
-            return null;
-        }
-
-        return $this->_buildImageResult($imageRow);
-    }
-
-    /**
-     * @param int $imageId
+     * @param Zend_Db_Table_Row $imageRow
      * @return string
      * @throws Autowp_Service_ImageStorage_Exception
      */
-    public function getImageBlob($imageId)
+    protected function _buildImageBlobResult(Zend_Db_Table_Row $imageRow)
     {
-        $id = (int)$imageId;
-        if (strlen($id) != strlen($imageId)) {
-            return $this->_raise("Image id mus be int. `$imageId` given");
-        }
-
-        $imageTable = $this->_getImageTable();
-
-        $imageRow = $imageTable->fetchRow(array(
-            'id = ?' => $id
-        ));
-
-        if (!$imageRow) {
-            return null;
-        }
-
         $dir = $this->getDir($imageRow->dir);
         if (!$dir) {
             $this->_raise("Dir '$dir' not defined");
@@ -444,10 +405,53 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param int $imageId
-     * @param string $format
-     * @return Autowp_Service_ImageStorage_Image
+     * @return Zend_Db_Table_Row
+     * @throws Autowp_Service_ImageStorage_Exception
      */
-    public function getFormatedImage($imageId, $formatName)
+    protected function _getImageRow($imageId)
+    {
+        $id = (int)$imageId;
+        if (strlen($id) != strlen($imageId)) {
+            return $this->_raise("Image id mus be int. `$imageId` given");
+        }
+
+        $imageRow = $this->_getImageTable()->fetchRow(array(
+            'id = ?' => $id
+        ));
+
+        return $imageRow ? $imageRow : null;
+    }
+
+    /**
+     * @param int $imageId
+     * @return Autowp_Service_ImageStorage_Image
+     * @throws Autowp_Service_ImageStorage_Exception
+     */
+    public function getImage($imageId)
+    {
+        $imageRow = $this->_getImageRow($imageId);
+
+        return $imageRow ? $this->_buildImageResult($imageRow) : null;
+    }
+
+    /**
+     * @param int $imageId
+     * @return string
+     * @throws Autowp_Service_ImageStorage_Exception
+     */
+    public function getImageBlob($imageId)
+    {
+        $imageRow = $this->_getImageRow($imageId);
+
+        return $imageRow ? $this->_buildImageBlobResult($imageRow) : null;
+    }
+
+    /**
+     * @param int $imageId
+     * @param string $formatName
+     * @return Zend_Db_Table_Row
+     */
+    protected function _getFormatedImageRow($imageId, $formatName)
     {
         if (!$imageId) {
             $this->_raise("ImageId not provided");
@@ -529,7 +533,31 @@ class Autowp_Service_ImageStorage
             ));
         }
 
-        return $this->_buildImageResult($destImageRow);
+        return $destImageRow;
+    }
+
+    /**
+     * @param int $imageId
+     * @return string
+     * @throws Autowp_Service_ImageStorage_Exception
+     */
+    public function getFormatedImageBlob($imageId, $formatName)
+    {
+        return $this->_buildImageBlobResult(
+            $this->_getFormatedImageRow($imageId, $formatName)
+        );
+    }
+
+    /**
+     * @param int $imageId
+     * @param string $format
+     * @return Autowp_Service_ImageStorage_Image
+     */
+    public function getFormatedImage($imageId, $formatName)
+    {
+        return $this->_buildImageResult(
+            $this->_getFormatedImageRow($imageId, $formatName)
+        );
     }
 
     /**
