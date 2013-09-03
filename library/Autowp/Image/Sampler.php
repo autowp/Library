@@ -68,35 +68,59 @@ class Autowp_Image_Sampler
         $srcHeight = $imagick->getImageHeight();
         $srcRatio = $srcWidth / $srcHeight;
 
+        $widthLess  = $format->getWidth()  && ($srcWidth  < $format->getWidth() );
+        $heightLess = $format->getHeight() && ($srcHeight < $format->getHeight());
+        $sizeLess = $widthLess || $heightLess;
+
         if ($format->getWidth() && $format->getHeight()) {
             $ratio = $format->getWidth() / $format->getHeight();
 
             switch ($format->getFitType()) {
                 case Autowp_Image_Sampler_Format::FIT_TYPE_INNER:
 
-                    // высчитываем размеры обрезания
-                    if ($ratio < $srcRatio) {
-                        // широкая картинка
-                        $cropWidth = (int)round($srcHeight * $ratio);
-                        $cropHeight = $srcHeight;
-                        $cropLeft = (int)floor(($srcWidth - $cropWidth) / 2);
-                        $cropTop = 0;
+                    if ($format->getReduceOnly() && $sizeLess) {
+                        // dont crop
+                        if (!$heightLess) {
+                            // resize by height
+                            $scaleHeight = $format->getHeight();
+                            $scaleWidth = round($scaleHeight * $srcRatio);
+                            $imagick->scaleImage(
+                                $scaleWidth, $scaleHeight, false
+                            );
+                        } elseif (!$widthLess) {
+                            // resize by width
+                            $scaleWidth = $format->getWidth();
+                            $scaleHeight = round($scaleWidth / $srcRatio);
+                            $imagick->scaleImage(
+                                $scaleWidth, $scaleHeight, false
+                            );
+                        }
                     } else {
-                        // высокая картинка
-                        $cropWidth = $srcWidth;
-                        $cropHeight = (int)round($srcWidth / $ratio);
-                        $cropLeft = 0;
-                        $cropTop = (int)floor(($srcHeight - $cropHeight) / 2);
-                    }
 
-                    $imagick->setImagePage(0, 0, 0, 0);
-                    if (!$imagick->cropImage($cropWidth, $cropHeight, $cropLeft, $cropTop)) {
-                        return $this->_raise("Error crop");
-                    }
+                        // высчитываем размеры обрезания
+                        if ($ratio < $srcRatio) {
+                            // широкая картинка
+                            $cropWidth = (int)round($srcHeight * $ratio);
+                            $cropHeight = $srcHeight;
+                            $cropLeft = (int)floor(($srcWidth - $cropWidth) / 2);
+                            $cropTop = 0;
+                        } else {
+                            // высокая картинка
+                            $cropWidth = $srcWidth;
+                            $cropHeight = (int)round($srcWidth / $ratio);
+                            $cropLeft = 0;
+                            $cropTop = (int)floor(($srcHeight - $cropHeight) / 2);
+                        }
 
-                    $imagick->scaleImage(
-                        $format->getWidth(), $format->getHeight(), false
-                    );
+                        $imagick->setImagePage(0, 0, 0, 0);
+                        if (!$imagick->cropImage($cropWidth, $cropHeight, $cropLeft, $cropTop)) {
+                            return $this->_raise("Error crop");
+                        }
+
+                        $imagick->scaleImage(
+                            $format->getWidth(), $format->getHeight(), false
+                        );
+                    }
 
                     break;
 
@@ -174,10 +198,10 @@ class Autowp_Image_Sampler
 
     /**
      * @param Imagick|string $source
-     * @param Autowp_Image_Sampler_Format $format
+     * @param array|Autowp_Image_Sampler_Format $format
      * @throws Autowp_Image_Sampler_Exception
      */
-    public function convertToFile($source, $destFile, Autowp_Image_Sampler_Format $format)
+    public function convertToFile($source, $destFile, $format)
     {
         if ($source instanceof Imagick) {
             $imagick = clone $source; // to prevent modifying source

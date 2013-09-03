@@ -53,6 +53,11 @@ class Autowp_Image_Sampler_Format
     protected $_cropHeight;
 
     /**
+     * @bool
+     */
+    protected $_reduceOnly = false;
+
+    /**
      * @param array $options
      * @throws Autowp_Image_Sampler_Exception
      */
@@ -79,6 +84,25 @@ class Autowp_Image_Sampler_Format
         }
 
         return $this;
+    }
+
+    /**
+     * @param bool $reduceOnly
+     * @return Autowp_Image_Sampler_Format
+     */
+    public function setReduceOnly($reduceOnly)
+    {
+        $this->_reduceOnly = (bool)$reduceOnly;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getReduceOnly()
+    {
+        return $this->_reduceOnly;
     }
 
     /**
