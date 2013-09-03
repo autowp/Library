@@ -1,8 +1,8 @@
 <?php
 
-require_once 'TestHelper.php';
+require_once dirname(__FILE__) . '/../../TestHelper.php';
 
-class AllTests
+class Autowp_Filter_AllTests
 {
 
     public static function main()
@@ -14,8 +14,8 @@ class AllTests
 
     public static function suite()
     {
-        $suite = new PHPUnit_Framework_TestSuite('Autowp Library');
-        $suite->addTestSuite('Autowp_AllTests');
+        $suite = new PHPUnit_Framework_TestSuite('Autowp Library - Autowp_Filter');
+        $suite->addTestSuite('Autowp_Filter_FilenameTests');
 
         return $suite;
     }

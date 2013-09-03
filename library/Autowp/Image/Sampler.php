@@ -116,18 +116,14 @@ class Autowp_Image_Sampler
                         $scaleWidth, $scaleHeight, false
                     );
 
-                    /**
-                     * @todo 1px bug
-                     */
-                    $borderLeft = round(($format->getWidth() - $scaleWidth) / 2);
-                    $borderRight = $format->getWidth() - $scaleWidth - $borderLeft;
-                    $borderTop = round(($format->getHeight() - $scaleHeight) / 2);
-                    $borderBottom = $format->getHeight() - $scaleHeight - $borderTop;
+                    $borderLeft = floor(($format->getWidth() - $scaleWidth) / 2);
+                    $borderTop = floor(($format->getHeight() - $scaleHeight) / 2);
 
-                    $imagick->borderImage(
-                        $bg,
-                        $borderLeft,
-                        $borderTop
+                    $imagick->extentImage(
+                        $format->getWidth(),
+                        $format->getHeight(),
+                        -$borderLeft,
+                        -$borderTop
                     );
 
                     break;

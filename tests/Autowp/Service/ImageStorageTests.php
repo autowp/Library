@@ -1,13 +1,13 @@
 <?php
 
 if (!defined('PHPUnit_MAIN_METHOD')) {
-    define('PHPUnit_MAIN_METHOD', 'Autowp_StorageTest::main');
+    define('PHPUnit_MAIN_METHOD', 'Autowp_Service_ImageStorageTests::main');
 }
 
-require_once dirname(__FILE__).'/../TestHelper.php';
+require_once dirname(__FILE__) . '/../../TestHelper.php';
 
 
-class Autowp_StorageTest extends PHPUnit_Framework_TestCase
+class Autowp_Service_ImageStorageTests extends PHPUnit_Framework_TestCase
 {
     public static function main()
     {
@@ -60,6 +60,6 @@ class Autowp_StorageTest extends PHPUnit_Framework_TestCase
     }
 }
 
-if (PHPUnit_MAIN_METHOD == 'Autowp_StorageTest::main') {
+if (PHPUnit_MAIN_METHOD == 'Autowp_Service_ImageStorageTests::main') {
     Autowp_Test::main();
 }

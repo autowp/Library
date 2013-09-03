@@ -1,13 +1,13 @@
 <?php
 
 if (!defined('PHPUnit_MAIN_METHOD')) {
-    define('PHPUnit_MAIN_METHOD', 'Autowp_FilterTest::main');
+    define('PHPUnit_MAIN_METHOD', 'Autowp_Filter_FilenameTests::main');
 }
 
-require_once dirname(__FILE__).'/../TestHelper.php';
+require_once dirname(__FILE__).'/../../TestHelper.php';
 
 
-class Autowp_FilterTest extends PHPUnit_Framework_TestCase
+class Autowp_Filter_FilenameTests extends PHPUnit_Framework_TestCase
 {
     public static function main()
     {
@@ -39,6 +39,6 @@ class Autowp_FilterTest extends PHPUnit_Framework_TestCase
     }
 }
 
-if (PHPUnit_MAIN_METHOD == 'Autowp_FilterTest::main') {
+if (PHPUnit_MAIN_METHOD == 'Autowp_Filter_FilenameTests::main') {
     Autowp_Test::main();
 }
