@@ -290,6 +290,7 @@ class Autowp_Image_Sampler
             $bg = 'transparent';
         }
         $imagick->setBackgroundColor($bg);
+        $imagick->setImageBackgroundColor($bg);
 
 
         if ($format->getWidth() && $format->getHeight()) {
