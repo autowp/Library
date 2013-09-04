@@ -13,6 +13,11 @@ class Autowp_ExternalLoginService_Twitter
      */
     protected $_session = null;
 
+    /**
+     * @var Zend_Oauth_Token_Access
+     */
+    protected $_accessToken = null;
+
     public function getSession()
     {
         if (!$this->_session) {
@@ -61,7 +66,6 @@ class Autowp_ExternalLoginService_Twitter
      */
     public function callback(array $params)
     {
-
         if (isset($params['denied']) && $params['denied']) {
             return false;
         }
@@ -70,13 +74,22 @@ class Autowp_ExternalLoginService_Twitter
         $consumer = $this->getConsumer(array(
             'redirect_uri' => $params['redirect_uri']
         ));
-        $token = $consumer->getAccessToken($params, $session->requestToken);
+        $this->_accessToken = $consumer->getAccessToken($params, $session->requestToken);
 
         unset($session->requestToken);
 
+        return (bool)$this->_accessToken;
+    }
+
+    /**
+     * @see Autowp_ExternalLoginService_Abstract::getData()
+     * @return array
+     */
+    public function getData()
+    {
         $twitter = new Zend_Service_Twitter(array(
-            'username'        => $token->getParam('screen_name'),
-            'accessToken'     => $token,
+            'username'        => $this->_accessToken->getParam('screen_name'),
+            'accessToken'     => $this->_accessToken,
             'oauthOptions'    => array(
                 'consumerKey'    => $this->_options['consumerKey'],
                 'consumerSecret' => $this->_options['consumerSecret'],

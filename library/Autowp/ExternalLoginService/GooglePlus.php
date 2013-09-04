@@ -3,7 +3,23 @@
 class Autowp_ExternalLoginService_GooglePlus
     extends Autowp_ExternalLoginService_OAuth
 {
+    /**
+     * @var string
+     */
+    protected $_accessToken;
+
     public function _processCallback($accessToken, $data)
+    {
+        $this->_accessToken = $accessToken;
+
+        return (bool)$this->_accessToken;
+    }
+
+    /**
+     * @see Autowp_ExternalLoginService_Abstract::getData()
+     * @return array
+     */
+    public function getData()
     {
         $uaData = array(
             'external_id' => null,
@@ -13,7 +29,7 @@ class Autowp_ExternalLoginService_GooglePlus
         );
 
         $json = $this->_genericApiCall('https://www.googleapis.com/plus/v1/people/me', array(
-            'access_token' => $accessToken,
+            'access_token' => $this->_accessToken,
             'fields'       => 'id,displayName,url,image(url)'
         ));
 

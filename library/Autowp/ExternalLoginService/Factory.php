@@ -24,7 +24,9 @@ class Autowp_ExternalLoginService_Factory
             throw new Exception("Service '$service' not found");
         }
 
-        $className = 'Autowp_ExternalLoginService_' . ucfirst($service);
+        $filter = new Zend_Filter_Word_DashToCamelCase();
+
+        $className = 'Autowp_ExternalLoginService_' . ucfirst($filter->filter($service));
 
         $serviceObj = new $className($this->_options[$service]);
 

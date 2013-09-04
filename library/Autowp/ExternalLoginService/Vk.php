@@ -1,8 +1,25 @@
 <?php
 
-class Autowp_ExternalLoginService_VK extends Autowp_ExternalLoginService_OAuth
+class Autowp_ExternalLoginService_Vk extends Autowp_ExternalLoginService_OAuth
 {
+    protected $_vkUserId = null;
+
     public function _processCallback($accessToken, $data)
+    {
+        if (!isset($data['user_id'])) {
+            throw new Autowp_ExternalLoginService_Exception("'user_id' was not provided");
+        }
+
+        $this->_vkUserId = $data['user_id'];
+
+        return (bool)$this->_vkUserId;
+    }
+
+    /**
+     * @see Autowp_ExternalLoginService_Abstract::getData()
+     * @return array
+     */
+    public function getData()
     {
         $uaData = array(
             'external_id' => null,
@@ -11,16 +28,11 @@ class Autowp_ExternalLoginService_VK extends Autowp_ExternalLoginService_OAuth
             'photo'       => null
         );
 
-        if (!isset($data['user_id'])) {
-            throw new Autowp_ExternalLoginService_Exception("'user_id' was not provided");
-        }
-
-        $vkUserId = $data['user_id'];
-        $uaData['external_id'] = $vkUserId;
+        $uaData['external_id'] = $this->_vkUserId;
 
         $json = $this->_genericApiCall('https://api.vkontakte.ru/method/getProfiles', array(
             'access_token' => $accessToken,
-            'uid'          => $vkUserId,
+            'uid'          => $this->_vkUserId,
             'fields'       => 'uid,first_name,last_name,nickname,screen_name,photo_medium'
         ));
 
@@ -30,7 +42,7 @@ class Autowp_ExternalLoginService_VK extends Autowp_ExternalLoginService_OAuth
 
         $vkUsers = $json['response'];
         foreach ($vkUsers as $vkUser) {
-            if ($vkUser['uid'] == $vkUserId) {
+            if ($vkUser['uid'] == $this->_vkUserId) {
                 $firstName = false;
                 if (isset($vkUser['first_name']) && $vkUser['first_name']) {
                     $firstName = $vkUser['first_name'];
