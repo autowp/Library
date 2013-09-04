@@ -704,7 +704,7 @@ class Autowp_Service_ImageStorage
         do {
 
             $lockAttemptsLeft = self::LOCK_MAX_ATTEMPTS;
-            $success = false;
+            $fileSuccess = false;
             do {
                 $lockAttemptsLeft--;
 
@@ -736,11 +736,11 @@ class Autowp_Service_ImageStorage
                 flock($fp, LOCK_UN);
                 fclose($fp);
 
-                $success = true;
+                $fileSuccess = true;
 
-            } while (($lockAttemptsLeft > 0) && !$success);
+            } while (($lockAttemptsLeft > 0) && !$fileSuccess);
 
-            if (!$success) {
+            if (!$fileSuccess) {
                 return $this->_raise("Cannot save to `$destFilePath` after few attempts");
             }
 
@@ -763,6 +763,12 @@ class Autowp_Service_ImageStorage
             } catch (Zend_Db_Exception $e) {
                 // duplicate or other error
                 $insertAttemptException = $e;
+                // drop saved file
+                if ($fileSuccess) {
+                    if (file_exists($destFilePath)) {
+                        unklink($destFilePath);
+                    }
+                }
             }
         } while (($insertAttemptsLeft > 0) && $insertAttemptException);
 
