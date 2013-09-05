@@ -71,6 +71,12 @@ class Autowp_ExternalLoginService_Twitter
         }
 
         $session = $this->getSession();
+
+        if (!isset($session->requestToken)) {
+            $message = 'Request token not set';
+            throw new Autowp_ExternalLoginService_Exception($message);
+        }
+
         $consumer = $this->getConsumer(array(
             'redirect_uri' => $params['redirect_uri']
         ));
@@ -83,7 +89,7 @@ class Autowp_ExternalLoginService_Twitter
 
     /**
      * @see Autowp_ExternalLoginService_Abstract::getData()
-     * @return array
+     * @return Autowp_ExternalLoginService_Result
      */
     public function getData()
     {
@@ -98,23 +104,24 @@ class Autowp_ExternalLoginService_Twitter
         $response = $twitter->account->verifyCredentials();
 
         if (!$response->isSuccess()) {
-            return false;
+            $message = 'Error requesting data';
+            throw new Autowp_ExternalLoginService_Exception($message);
         }
 
         $values = $response->toValue();
 
         $imageUrl = null;
         if ($values->profile_image_url) {
-            $imageUrl = str_replace('normal', 'bigger', $values->profile_image_url);
+            $imageUrl = str_replace('_normal', '', $values->profile_image_url);
         }
 
-        $uaData = array(
-            'external_id' => $values->id,
-            'name'        => $values->name,
-            'link'        => 'http://twitter.com/' . $values->screen_name,
-            'photo'       => $imageUrl
+        $data = array(
+            'externalId' => $values->id,
+            'name'       => $values->name,
+            'profileUrl' => 'http://twitter.com/' . $values->screen_name,
+            'photoUrl'   => $imageUrl
         );
 
-        return $uaData;
+        return new Autowp_ExternalLoginService_Result($data);
     }
 }

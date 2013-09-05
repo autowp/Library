@@ -17,15 +17,15 @@ class Autowp_ExternalLoginService_GooglePlus
 
     /**
      * @see Autowp_ExternalLoginService_Abstract::getData()
-     * @return array
+     * @return Autowp_ExternalLoginService_Result
      */
     public function getData()
     {
-        $uaData = array(
-            'external_id' => null,
-            'name'        => null,
-            'link'        => null,
-            'photo'       => null
+        $data = array(
+            'externalId' => null,
+            'name'       => null,
+            'profileUrl' => null,
+            'photoUrl'   => null
         );
 
         $json = $this->_genericApiCall('https://www.googleapis.com/plus/v1/people/me', array(
@@ -34,18 +34,18 @@ class Autowp_ExternalLoginService_GooglePlus
         ));
 
         if (isset($json['id']) && $json['id']) {
-            $uaData['external_id'] = $json['id'];
+            $data['externalId'] = $json['id'];
         }
         if (isset($json['displayName']) && $json['displayName']) {
-            $uaData['name'] = $json['displayName'];
+            $data['name'] = $json['displayName'];
         }
         if (isset($json['url']) && $json['url']) {
-            $uaData['link'] = $json['url'];
+            $data['profileUrl'] = $json['url'];
         }
         if (isset($json['image']['url']) && $json['image']['url']) {
-            $uaData['photo'] = $json['image']['url'];
+            $data['photoUrl'] = $json['image']['url'];
         }
 
-        return $uaData;
+        return new Autowp_ExternalLoginService_Result($data);
     }
 }

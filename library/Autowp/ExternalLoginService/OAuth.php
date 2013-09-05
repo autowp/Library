@@ -12,7 +12,7 @@ abstract class Autowp_ExternalLoginService_OAuth
     }
 
     /**
-     * @return Project_Oauth2
+     * @return Autowp_Oauth2_Client
      */
     protected function _getOauth()
     {
@@ -22,7 +22,7 @@ abstract class Autowp_ExternalLoginService_OAuth
             );
         }
 
-        $oauth2 = new Project_Oauth2($this->_options['oauthOptions']);
+        $oauth2 = new Autowp_Oauth2_Client($this->_options['oauthOptions']);
         $oauth2->setSession($this->_getOauthSession());
 
         return $oauth2;

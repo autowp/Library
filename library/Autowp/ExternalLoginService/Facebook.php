@@ -52,30 +52,30 @@ class Autowp_ExternalLoginService_Facebook
 
     /**
      * @see Autowp_ExternalLoginService_Abstract::getData()
-     * @return array
+     * @return Autowp_ExternalLoginService_Result
      */
     public function getData()
     {
         $json = $this->_getFacebook()->api('/me');
 
-        $uaData = array(
-            'external_id' => null,
-            'name'        => null,
-            'link'        => null,
-            'photo'       => null
+        $data = array(
+            'externalId' => null,
+            'name'       => null,
+            'profileUrl' => null,
+            'photoUrl'   => null
         );
         if (isset($json['id']) && $json['id']) {
-            $uaData['external_id'] = $json['id'];
-            $uaData['photo'] = sprintf($this->_imageUrlTemplate, $json['id']);
+            $data['externalId'] = $json['id'];
+            $data['photoUrl'] = sprintf($this->_imageUrlTemplate, $json['id']);
         }
         if (isset($json['name']) && $json['name']) {
-            $uaData['name'] = $json['name'];
+            $data['name'] = $json['name'];
         }
         if (isset($json['link']) && $json['link']) {
-            $uaData['link'] = $json['link'];
+            $data['profileUrl'] = $json['link'];
         }
 
-        return $uaData;
+        return new Autowp_ExternalLoginService_Result($data);
     }
 
     /**

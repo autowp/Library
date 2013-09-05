@@ -4,6 +4,9 @@ class Autowp_ExternalLoginService_Vk extends Autowp_ExternalLoginService_OAuth
 {
     protected $_vkUserId = null;
 
+    /**
+     * @see Autowp_ExternalLoginService_OAuth::_processCallback()
+     */
     public function _processCallback($accessToken, $data)
     {
         if (!isset($data['user_id'])) {
@@ -17,18 +20,18 @@ class Autowp_ExternalLoginService_Vk extends Autowp_ExternalLoginService_OAuth
 
     /**
      * @see Autowp_ExternalLoginService_Abstract::getData()
-     * @return array
+     * @return Autowp_ExternalLoginService_Result
      */
     public function getData()
     {
         $uaData = array(
-            'external_id' => null,
-            'name'        => null,
-            'link'        => null,
-            'photo'       => null
+            'externalId' => null,
+            'name'       => null,
+            'profileUrl' => null,
+            'photoUrl'   => null
         );
 
-        $uaData['external_id'] = $this->_vkUserId;
+        $uaData['externalId'] = $this->_vkUserId;
 
         $json = $this->_genericApiCall('https://api.vkontakte.ru/method/getProfiles', array(
             'access_token' => $accessToken,
@@ -53,15 +56,15 @@ class Autowp_ExternalLoginService_Vk extends Autowp_ExternalLoginService_OAuth
                 }
                 $uaData['name'] = $firstName . ($firstName && $lastName ? ' ' : '') . $lastName;
                 if (isset($vkUser['screen_name']) && $vkUser['screen_name']) {
-                    $uaData['link'] = 'http://vk.com/' . $vkUser['screen_name'];
+                    $uaData['profileUrl'] = 'http://vk.com/' . $vkUser['screen_name'];
                 }
                 if (isset($vkUser['photo_medium']) && $vkUser['photo_medium']) {
-                    $uaData['photo'] = $vkUser['photo_medium'];
+                    $uaData['photoUrl'] = $vkUser['photo_medium'];
                 }
                 break;
             }
         }
 
-        return $uaData;
+        return new Autowp_ExternalLoginService_Result($data);
     }
 }

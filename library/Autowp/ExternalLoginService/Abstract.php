@@ -20,7 +20,7 @@ abstract class Autowp_ExternalLoginService_Abstract
     abstract public function callback(array $params);
 
     /**
-     * @return array
+     * @return Autowp_ExternalLoginService_Result
      */
     abstract public function getData();
 
