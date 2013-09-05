@@ -4,6 +4,8 @@ class Autowp_ExternalLoginService_Vk extends Autowp_ExternalLoginService_OAuth
 {
     protected $_vkUserId = null;
 
+    protected $_accessToken = null;
+
     /**
      * @see Autowp_ExternalLoginService_OAuth::_processCallback()
      */
@@ -13,6 +15,7 @@ class Autowp_ExternalLoginService_Vk extends Autowp_ExternalLoginService_OAuth
             throw new Autowp_ExternalLoginService_Exception("'user_id' was not provided");
         }
 
+        $this->_accessToken = $accessToken;
         $this->_vkUserId = $data['user_id'];
 
         return (bool)$this->_vkUserId;
@@ -24,17 +27,15 @@ class Autowp_ExternalLoginService_Vk extends Autowp_ExternalLoginService_OAuth
      */
     public function getData()
     {
-        $uaData = array(
-            'externalId' => null,
+        $data = array(
+            'externalId' => $this->_vkUserId,
             'name'       => null,
             'profileUrl' => null,
             'photoUrl'   => null
         );
 
-        $uaData['externalId'] = $this->_vkUserId;
-
         $json = $this->_genericApiCall('https://api.vkontakte.ru/method/getProfiles', array(
-            'access_token' => $accessToken,
+            'access_token' => $this->_accessToken,
             'uid'          => $this->_vkUserId,
             'fields'       => 'uid,first_name,last_name,nickname,screen_name,photo_medium'
         ));
@@ -54,12 +55,12 @@ class Autowp_ExternalLoginService_Vk extends Autowp_ExternalLoginService_OAuth
                 if (isset($vkUser['last_name']) && $vkUser['last_name']) {
                     $lastName = $vkUser['last_name'];
                 }
-                $uaData['name'] = $firstName . ($firstName && $lastName ? ' ' : '') . $lastName;
+                $data['name'] = $firstName . ($firstName && $lastName ? ' ' : '') . $lastName;
                 if (isset($vkUser['screen_name']) && $vkUser['screen_name']) {
-                    $uaData['profileUrl'] = 'http://vk.com/' . $vkUser['screen_name'];
+                    $data['profileUrl'] = 'http://vk.com/' . $vkUser['screen_name'];
                 }
                 if (isset($vkUser['photo_medium']) && $vkUser['photo_medium']) {
-                    $uaData['photoUrl'] = $vkUser['photo_medium'];
+                    $data['photoUrl'] = $vkUser['photo_medium'];
                 }
                 break;
             }
