@@ -78,4 +78,12 @@ class Autowp_Service_ImageStorage_Image
     {
         return $this->_height;
     }
+
+    /**
+     * @return int
+     */
+    public function getFileSize()
+    {
+        return $this->_filesize;
+    }
 }

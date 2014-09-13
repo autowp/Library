@@ -245,7 +245,14 @@ class Autowp_Image_Sampler
             }
         }
 
-        $crop = $format->getCrop();
+        if ($quality = $format->getQuality()) {
+            $imagick->setImageCompressionQuality($quality);
+        }
+
+        $crop = false;
+        if (!$format->getIgnoreCrop()) {
+            $crop = $format->getCrop();
+        }
 
         if ($crop) {
             $cropSet = isset($crop['width'], $crop['height'], $crop['left'], $crop['top']);
@@ -318,6 +325,14 @@ class Autowp_Image_Sampler
                 $this->_convertByHeight($imagick, $format);
             }
 
+        }
+
+        if ($format->getStrip()) {
+            $imagick->stripImage();
+        }
+
+        if ($imageFormat = $format->getFormat()) {
+            $imagick->setImageFormat($imageFormat);
         }
     }
 
