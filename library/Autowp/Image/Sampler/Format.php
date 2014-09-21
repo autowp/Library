@@ -58,6 +58,11 @@ class Autowp_Image_Sampler_Format
     protected $_ignoreCrop = false;
 
     /**
+     * @var boolean
+     */
+    protected $_proportionalCrop = false;
+
+    /**
      * @bool
      */
     protected $_reduceOnly = false;
@@ -438,6 +443,25 @@ class Autowp_Image_Sampler_Format
     public function getIgnoreCrop()
     {
         return $this->_ignoreCrop;
+    }
+
+    /**
+     * @param boolean $value
+     * @return Autowp_Image_Sampler_Format
+     */
+    public function setProportionalCrop($value)
+    {
+        $this->_proportionalCrop = (bool)$value;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getProportionalCrop()
+    {
+        return $this->_proportionalCrop;
     }
 
     /**
