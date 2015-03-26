@@ -281,13 +281,13 @@ class Autowp_Image_Sampler
             $right = $cropLeft + $cropWidth;
             $widthValid  = ($cropWidth > 0) && ($right <= $width );
             if (!$widthValid) {
-                return $this->_raise("Crop width out of bounds ('$cropLeft + $cropWidth')");
+                return $this->_raise("Crop width out of bounds ('$cropLeft + $cropWidth' ~ '$width x $height')");
             }
 
             $bottom = $cropTop + $cropHeight;
             $heightValid = ($cropHeight > 0) && ($bottom <= $height);
             if (!$heightValid) {
-                return $this->_raise("Crop height out of bounds ('$cropTop + $cropHeight')");
+                return $this->_raise("Crop height out of bounds ('$cropTop + $cropHeight' ~ '$width x $height')");
             }
 
             $fWidth = $format->getWidth();

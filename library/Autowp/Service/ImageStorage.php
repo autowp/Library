@@ -371,7 +371,10 @@ class Autowp_Service_ImageStorage
 
         $src = null;
         if ($dirUrl) {
-            $src = $dirUrl . $imageRow->filepath;
+
+            $path = str_replace('+', '%2B', $imageRow->filepath);
+
+            $src = $dirUrl . $path;
         }
 
         return new Autowp_Service_ImageStorage_Image(array(
@@ -423,6 +426,23 @@ class Autowp_Service_ImageStorage
     }
 
     /**
+     * @param array $imageIds
+     * @return Zend_Db_Table_Row
+     * @throws Autowp_Service_ImageStorage_Exception
+     */
+    protected function _getImageRows(array $imageIds)
+    {
+        $result = array();
+        if (count($imageIds)) {
+            $result = $this->_getImageTable()->fetchAll(array(
+                'id in (?)' => $imageIds
+            ));
+        }
+
+        return $result;
+    }
+
+    /**
      * @param int $imageId
      * @return Autowp_Service_ImageStorage_Image
      * @throws Autowp_Service_ImageStorage_Exception
@@ -432,6 +452,21 @@ class Autowp_Service_ImageStorage
         $imageRow = $this->_getImageRow($imageId);
 
         return $imageRow ? $this->_buildImageResult($imageRow) : null;
+    }
+
+    /**
+     * @param array $imageIds
+     * @return Autowp_Service_ImageStorage_Image
+     * @throws Autowp_Service_ImageStorage_Exception
+     */
+    public function getImages(array $imageIds)
+    {
+        $result = array();
+        foreach ($this->_getImageRows($imageIds) as $imageRow) {
+            $result[$imageRow['id']] = $this->_buildImageResult($imageRow);
+        }
+
+        return $result;
     }
 
     /**
@@ -446,6 +481,135 @@ class Autowp_Service_ImageStorage
         return $imageRow ? $this->_buildImageBlobResult($imageRow) : null;
     }
 
+    protected function _getFormatedImageRows(array $requests, $formatName)
+    {
+        $imageTable = $this->_getImageTable();
+
+        $imagesId = array();
+        foreach ($requests as $request) {
+            $imageId = $request->getImageId();
+            if (!$imageId) {
+                $this->_raise("ImageId not provided");
+            }
+
+            $imagesId[] = $imageId;
+        }
+
+        if (count($imagesId)) {
+            $destImageRows = $imageTable->fetchAll(
+                $imageTable->select(true)
+                    ->setIntegrityCheck(false) // to fetch image_id
+                    ->join(
+                        array('f' => $this->_formatedImageTableName),
+                        $this->_imageTableName . '.id = f.formated_image_id',
+                        'image_id'
+                    )
+                    ->where('f.image_id in (?)', $imagesId)
+                    ->where('f.format = ?', (string)$formatName)
+            );
+        } else {
+            $destImageRows = array();
+        }
+
+        $result = array();
+
+        foreach ($requests as $key => $request) {
+
+            $imageId = $request->getImageId();
+
+            $destImageRow = null;
+            foreach ($destImageRows as $row) {
+                if ($row->image_id == $imageId) {
+                    $destImageRow = $row;
+                    break;
+                }
+            }
+
+            if (!$destImageRow) {
+
+                // find source image
+                $imageRow = $this->_getImageTable()->fetchRow(array(
+                    'id = ?' => $imageId
+                ));
+                if (!$imageRow) {
+                    $this->_raise("Image `$imageId` not found");
+                }
+
+                $dir = $this->getDir($imageRow->dir);
+                if (!$dir) {
+                    $this->_raise("Dir '{$imageRow->dir}' not defined");
+                }
+
+                $srcFilePath = $dir->getPath() . DIRECTORY_SEPARATOR . $imageRow->filepath;
+
+                $imagick = new Imagick();
+                $imagick->readImage($srcFilePath);
+
+                // format
+                $format = $this->getFormat($formatName);
+                if (!$format) {
+                    $this->_raise("Format `$formatName` not found");
+                }
+                $cFormat = clone $format;
+
+                $crop = $request->getCrop();
+                if ($crop) {
+                    $cFormat->setCrop($crop);
+                }
+
+                $sampler = $this->getImageSampler();
+                if (!$sampler) {
+                    return $this->_raise("Image sampler not initialized");
+                }
+                $sampler->convertImagick($imagick, $cFormat);
+
+                // store result
+                $newPath = implode(DIRECTORY_SEPARATOR, array(
+                    $imageRow->dir,
+                    $formatName,
+                    $imageRow->filepath
+                ));
+                $pi = pathinfo($newPath);
+                $formatExt = $cFormat->getFormatExtension();
+                $extension = $formatExt ? $formatExt : $pi['extension'];
+                $formatedImageId = $this->addImageFromImagick(
+                    $imagick, $this->_formatedImageDirName,
+                    array(
+                        'extension' => $extension,
+                        'pattern'   => $pi['dirname'] . DIRECTORY_SEPARATOR . $pi['filename']
+                    )
+                );
+
+                $imagick->clear();
+
+                $formatedImageTable = $this->_getFormatedImageTable();
+                $formatedImageRow = $formatedImageTable->fetchRow(array(
+                    'format = ?'   => (string)$formatName,
+                    'image_id = ?' => $imageId,
+                ));
+                if (!$formatedImageRow) {
+                    $formatedImageRow = $formatedImageTable->createRow(array(
+                        'format'            => (string)$formatName,
+                        'image_id'          => $imageId,
+                        'formated_image_id' => $formatedImageId
+                    ));
+                } else {
+                    $formatedImageRow->formated_image_id = $formatedImageId;
+                }
+                $formatedImageRow->save();
+
+                // result
+                $destImageRow = $this->_getImageTable()->fetchRow(array(
+                    'id = ?' => $formatedImageId
+                ));
+            }
+
+            $result[$key] = $destImageRow;
+        }
+
+        return $result;
+    }
+
     /**
      * @param Autowp_Service_ImageStorage_Request $request
      * @param string $formatName
@@ -453,97 +617,13 @@ class Autowp_Service_ImageStorage
      */
     protected function _getFormatedImageRow(Autowp_Service_ImageStorage_Request $request, $formatName)
     {
-        $imageId = $request->getImageId();
+        $result = $this->_getFormatedImageRows(array($request), $formatName);
 
-        if (!$imageId) {
-            $this->_raise("ImageId not provided");
+        if (!isset($result[0])) {
+            $this->_raise("_getFormatedImageRows fails");
         }
 
-        $imageTable = $this->_getImageTable();
-
-        $destImageRow = $imageTable->fetchRow(
-            $imageTable->select(true)
-                ->join(
-                    array('f' => $this->_formatedImageTableName),
-                    $this->_imageTableName . '.id = f.formated_image_id',
-                    null
-                )
-                ->where('f.image_id = ?', $imageId)
-                ->where('f.format = ?', (string)$formatName)
-        );
-
-        if (!$destImageRow) {
-
-            // find source image
-            $imageRow = $this->_getImageTable()->fetchRow(array(
-                'id = ?' => $imageId
-            ));
-            if (!$imageRow) {
-                $this->_raise("Image `$imageId` not found");
-            }
-
-            $dir = $this->getDir($imageRow->dir);
-            if (!$dir) {
-                $this->_raise("Dir '{$imageRow->dir}' not defined");
-            }
-
-            $srcFilePath = $dir->getPath() . DIRECTORY_SEPARATOR . $imageRow->filepath;
-
-            $imagick = new Imagick();
-            $imagick->readImage($srcFilePath);
-
-            // format
-            $format = $this->getFormat($formatName);
-            if (!$format) {
-                $this->_raise("Format `$formatName` not found");
-            }
-            $cFormat = clone $format;
-
-            $crop = $request->getCrop();
-            if ($crop) {
-                $cFormat->setCrop($crop);
-            }
-
-            $sampler = $this->getImageSampler();
-            if (!$sampler) {
-                return $this->_raise("Image sampler not initialized");
-            }
-            $sampler->convertImagick($imagick, $cFormat);
-
-            // store result
-            $newPath = implode(DIRECTORY_SEPARATOR, array(
-                $imageRow->dir,
-                $formatName,
-                $imageRow->filepath
-            ));
-            $pi = pathinfo($newPath);
-            $formatExt = $cFormat->getFormatExtension();
-            $extension = $formatExt ? $formatExt : $pi['extension'];
-            $formatedImageId = $this->addImageFromImagick(
-                $imagick, $this->_formatedImageDirName,
-                array(
-                    'extension' => $extension,
-                    'pattern'   => $pi['dirname'] . DIRECTORY_SEPARATOR . $pi['filename']
-                )
-            );
-
-            $imagick->clear();
-
-            $formatedImageTable = $this->_getFormatedImageTable();
-            $formatedImageRow = $formatedImageTable->createRow(array(
-                'format'            => (string)$formatName,
-                'image_id'          => $imageId,
-                'formated_image_id' => $formatedImageId
-            ));
-            $formatedImageRow->save();
-
-            // result
-            $destImageRow = $this->_getImageTable()->fetchRow(array(
-                'id = ?' => $formatedImageId
-            ));
-        }
-
-        return $destImageRow;
+        return $result[0];
     }
 
     /**
@@ -571,7 +651,9 @@ class Autowp_Service_ImageStorage
      */
     public function getFormatedImage($request, $formatName)
     {
-        if (!$request instanceof Autowp_Service_ImageStorage_Request) {
+        if (is_array($request)) {
+            $request = new Autowp_Service_ImageStorage_Request($request);
+        } elseif (!$request instanceof Autowp_Service_ImageStorage_Request) {
             $request = new Autowp_Service_ImageStorage_Request(array(
                 'imageId' => $request
             ));
@@ -580,6 +662,21 @@ class Autowp_Service_ImageStorage
         return $this->_buildImageResult(
             $this->_getFormatedImageRow($request, $formatName)
         );
+    }
+
+    /**
+     * @param array $images
+     * @param string $format
+     * @return array
+     */
+    public function getFormatedImages(array $requests, $formatName)
+    {
+        $result = array();
+        foreach ($this->_getFormatedImageRows($requests, $formatName) as $key => $row) {
+            $result[$key] = $this->_buildImageResult($row);
+        }
+
+        return $result;
     }
 
     /**
