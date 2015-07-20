@@ -796,6 +796,22 @@ class Autowp_Service_ImageStorage
             $this->_raise("Failed to get image size ($width x $height)");
         }
 
+        $format = $imagick->getImageFormat();
+
+        switch ($format) {
+            case 'GIF':
+                $options['extension'] = 'gif';
+                break;
+            case 'JPEG':
+                $options['extension'] = 'jpg';
+                break;
+            case 'PNG':
+                $options['extension'] = 'png';
+                break;
+            default:
+                $this->_raise("Unsupported image type `$format`");
+        }
+
         return $this->_generateLockWrite($dirName, $options, $width, $height, function($fp) use ($imagick) {
             if (!$imagick->writeImageFile($fp)) {
                 $this->_raise("Imagick::writeImageFile error");
