@@ -487,6 +487,9 @@ class Autowp_Service_ImageStorage
 
         $imagesId = array();
         foreach ($requests as $request) {
+            if (!$request instanceof Autowp_Service_ImageStorage_Request) {
+                return $this->_raise('$requests is not array of Autowp_Service_ImageStorage_Request');
+            }
             $imageId = $request->getImageId();
             if (!$imageId) {
                 $this->_raise("ImageId not provided");
