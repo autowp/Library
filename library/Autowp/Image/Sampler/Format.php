@@ -53,9 +53,34 @@ class Autowp_Image_Sampler_Format
     protected $_cropHeight;
 
     /**
+     * @var boolean
+     */
+    protected $_ignoreCrop = false;
+
+    /**
+     * @var boolean
+     */
+    protected $_proportionalCrop = false;
+
+    /**
      * @bool
      */
     protected $_reduceOnly = false;
+
+    /**
+     * @var bool
+     */
+    protected $_strip = false;
+
+    /**
+     * @var int
+     */
+    protected $_quality = 0;
+
+    /**
+     * @var string
+     */
+    protected $_format = null;
 
     /**
      * @param array $options
@@ -79,11 +104,101 @@ class Autowp_Image_Sampler_Format
             if (method_exists($this, $method)) {
                 $this->$method($value);
             } else {
-                throw new Autowp_Image_Sampler_Exception("Unexpected option '$key'");
+                $this->_raise("Unexpected option '$key'");
             }
         }
 
         return $this;
+    }
+
+    /**
+     * @param string $value
+     * @return Autowp_Image_Sampler_Format
+     */
+    public function setFormat($value)
+    {
+        $this->_format = $value ? (string)$value : null;
+
+        return $this;
+    }
+
+    /**
+     * @return string|NULL
+     */
+    public function getFormat()
+    {
+        return $this->_format;
+    }
+
+    /**
+     * @return string|NULL
+     */
+    public function getFormatExtension()
+    {
+        if ($this->_format) {
+            switch ($this->_format) {
+                case 'jpg':
+                case 'jpeg':
+                    return 'jpeg';
+
+                case 'png':
+                    return 'png';
+
+                case 'gif':
+                    return 'gif';
+
+                case 'bmp';
+                    return 'bmp';
+
+                default:
+                    $this->_raise("Unsupported format `{$this->_format}`");
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param int $value
+     * @return Autowp_Image_Sampler_Format
+     */
+    public function setQuality($value)
+    {
+        $value = (int)$value;
+        if ($value < 0 || $value > 100) {
+            return $this->_raise("Compression quality must be >= 0 and <= 100");
+        }
+
+        $this->_quality = $value;
+
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getQuality()
+    {
+        return $this->_quality;
+    }
+
+    /**
+     * @param bool $value
+     * @return Autowp_Image_Sampler_Format
+     */
+    public function setStrip($value)
+    {
+        $this->_strip = (bool)$value;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getStrip()
+    {
+        return $this->_strip;
     }
 
     /**
@@ -122,7 +237,7 @@ class Autowp_Image_Sampler_Format
 
             default:
                 $message = "Unexpected fit type `$fitType`";
-                throw new Autowp_Image_Sampler_Exception($message);
+                $this->_raise($message);
         }
 
         return $this;
@@ -146,7 +261,7 @@ class Autowp_Image_Sampler_Format
         $width = (int)$width;
         if ($width < 0) {
             $message = "Unexpected width `$width`";
-            throw new Autowp_Image_Sampler_Exception($message);
+            $this->_raise($message);
         }
         $this->_width = $width;
 
@@ -171,7 +286,7 @@ class Autowp_Image_Sampler_Format
         $height = (int)$height;
         if ($height < 0) {
             $message = "Unexpected height `$height`";
-            throw new Autowp_Image_Sampler_Exception($message);
+            $this->_raise($message);
         }
         $this->_height = $height;
 
@@ -309,5 +424,52 @@ class Autowp_Image_Sampler_Format
             'width'  => $this->_cropWidth,
             'height' => $this->_cropHeight
         );
+    }
+
+    /**
+     * @param boolean $value
+     * @return Autowp_Image_Sampler_Format
+     */
+    public function setIgnoreCrop($value)
+    {
+        $this->_ignoreCrop = (bool)$value;
+
+        return $this;
+    }
+
+    /**
+     * @return boolean
+     */
+    public function getIgnoreCrop()
+    {
+        return $this->_ignoreCrop;
+    }
+
+    /**
+     * @param boolean $value
+     * @return Autowp_Image_Sampler_Format
+     */
+    public function setProportionalCrop($value)
+    {
+        $this->_proportionalCrop = (bool)$value;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getProportionalCrop()
+    {
+        return $this->_proportionalCrop;
+    }
+
+    /**
+     * @param string $message
+     * @throws Autowp_Image_Sampler_Exception
+     */
+    protected function _raise($message)
+    {
+        throw new Autowp_Image_Sampler_Exception($message);
     }
 }

@@ -364,14 +364,17 @@ class Autowp_Service_ImageStorage
     {
         $dir = $this->getDir($imageRow->dir);
         if (!$dir) {
-            $this->_raise("Dir '$dir' not defined");
+            $this->_raise("Dir '{$imageRow->dir}' not defined");
         }
 
         $dirUrl = $dir->getUrl();
 
         $src = null;
         if ($dirUrl) {
-            $src = $dirUrl . $imageRow->filepath;
+
+            $path = str_replace('+', '%2B', $imageRow->filepath);
+
+            $src = $dirUrl . $path;
         }
 
         return new Autowp_Service_ImageStorage_Image(array(
@@ -391,7 +394,7 @@ class Autowp_Service_ImageStorage
     {
         $dir = $this->getDir($imageRow->dir);
         if (!$dir) {
-            $this->_raise("Dir '$dir' not defined");
+            $this->_raise("Dir '{$imageRow->dir}' not defined");
         }
 
         $filepath = $dir->getPath() . DIRECTORY_SEPARATOR . $imageRow->filepath;
@@ -423,6 +426,23 @@ class Autowp_Service_ImageStorage
     }
 
     /**
+     * @param array $imageIds
+     * @return Zend_Db_Table_Row
+     * @throws Autowp_Service_ImageStorage_Exception
+     */
+    protected function _getImageRows(array $imageIds)
+    {
+        $result = array();
+        if (count($imageIds)) {
+            $result = $this->_getImageTable()->fetchAll(array(
+                'id in (?)' => $imageIds
+            ));
+        }
+
+        return $result;
+    }
+
+    /**
      * @param int $imageId
      * @return Autowp_Service_ImageStorage_Image
      * @throws Autowp_Service_ImageStorage_Exception
@@ -432,6 +452,21 @@ class Autowp_Service_ImageStorage
         $imageRow = $this->_getImageRow($imageId);
 
         return $imageRow ? $this->_buildImageResult($imageRow) : null;
+    }
+
+    /**
+     * @param array $imageIds
+     * @return Autowp_Service_ImageStorage_Image
+     * @throws Autowp_Service_ImageStorage_Exception
+     */
+    public function getImages(array $imageIds)
+    {
+        $result = array();
+        foreach ($this->_getImageRows($imageIds) as $imageRow) {
+            $result[$imageRow['id']] = $this->_buildImageResult($imageRow);
+        }
+
+        return $result;
     }
 
     /**
@@ -446,118 +481,202 @@ class Autowp_Service_ImageStorage
         return $imageRow ? $this->_buildImageBlobResult($imageRow) : null;
     }
 
+    protected function _getFormatedImageRows(array $requests, $formatName)
+    {
+        $imageTable = $this->_getImageTable();
+
+        $imagesId = array();
+        foreach ($requests as $request) {
+            $imageId = $request->getImageId();
+            if (!$imageId) {
+                $this->_raise("ImageId not provided");
+            }
+
+            $imagesId[] = $imageId;
+        }
+
+        if (count($imagesId)) {
+            $destImageRows = $imageTable->fetchAll(
+                $imageTable->select(true)
+                    ->setIntegrityCheck(false) // to fetch image_id
+                    ->join(
+                        array('f' => $this->_formatedImageTableName),
+                        $this->_imageTableName . '.id = f.formated_image_id',
+                        'image_id'
+                    )
+                    ->where('f.image_id in (?)', $imagesId)
+                    ->where('f.format = ?', (string)$formatName)
+            );
+        } else {
+            $destImageRows = array();
+        }
+
+        $result = array();
+
+        foreach ($requests as $key => $request) {
+
+            $imageId = $request->getImageId();
+
+            $destImageRow = null;
+            foreach ($destImageRows as $row) {
+                if ($row->image_id == $imageId) {
+                    $destImageRow = $row;
+                    break;
+                }
+            }
+
+            if (!$destImageRow) {
+
+                // find source image
+                $imageRow = $this->_getImageTable()->fetchRow(array(
+                    'id = ?' => $imageId
+                ));
+                if (!$imageRow) {
+                    $this->_raise("Image `$imageId` not found");
+                }
+
+                $dir = $this->getDir($imageRow->dir);
+                if (!$dir) {
+                    $this->_raise("Dir '{$imageRow->dir}' not defined");
+                }
+
+                $srcFilePath = $dir->getPath() . DIRECTORY_SEPARATOR . $imageRow->filepath;
+
+                $imagick = new Imagick();
+                $imagick->readImage($srcFilePath);
+
+                // format
+                $format = $this->getFormat($formatName);
+                if (!$format) {
+                    $this->_raise("Format `$formatName` not found");
+                }
+                $cFormat = clone $format;
+
+                $crop = $request->getCrop();
+                if ($crop) {
+                    $cFormat->setCrop($crop);
+                }
+
+                $sampler = $this->getImageSampler();
+                if (!$sampler) {
+                    return $this->_raise("Image sampler not initialized");
+                }
+                $sampler->convertImagick($imagick, $cFormat);
+
+                // store result
+                $newPath = implode(DIRECTORY_SEPARATOR, array(
+                    $imageRow->dir,
+                    $formatName,
+                    $imageRow->filepath
+                ));
+                $pi = pathinfo($newPath);
+                $formatExt = $cFormat->getFormatExtension();
+                $extension = $formatExt ? $formatExt : $pi['extension'];
+                $formatedImageId = $this->addImageFromImagick(
+                    $imagick, $this->_formatedImageDirName,
+                    array(
+                        'extension' => $extension,
+                        'pattern'   => $pi['dirname'] . DIRECTORY_SEPARATOR . $pi['filename']
+                    )
+                );
+
+                $imagick->clear();
+
+                $formatedImageTable = $this->_getFormatedImageTable();
+                $formatedImageRow = $formatedImageTable->fetchRow(array(
+                    'format = ?'   => (string)$formatName,
+                    'image_id = ?' => $imageId,
+                ));
+                if (!$formatedImageRow) {
+                    $formatedImageRow = $formatedImageTable->createRow(array(
+                        'format'            => (string)$formatName,
+                        'image_id'          => $imageId,
+                        'formated_image_id' => $formatedImageId
+                    ));
+                } else {
+                    $formatedImageRow->formated_image_id = $formatedImageId;
+                }
+                $formatedImageRow->save();
+
+                // result
+                $destImageRow = $this->_getImageTable()->fetchRow(array(
+                    'id = ?' => $formatedImageId
+                ));
+            }
+
+            $result[$key] = $destImageRow;
+        }
+
+        return $result;
+    }
+
     /**
-     * @param int $imageId
+     * @param Autowp_Service_ImageStorage_Request $request
      * @param string $formatName
      * @return Zend_Db_Table_Row
      */
-    protected function _getFormatedImageRow($imageId, $formatName)
+    protected function _getFormatedImageRow(Autowp_Service_ImageStorage_Request $request, $formatName)
     {
-        if (!$imageId) {
-            $this->_raise("ImageId not provided");
+        $result = $this->_getFormatedImageRows(array($request), $formatName);
+
+        if (!isset($result[0])) {
+            $this->_raise("_getFormatedImageRows fails");
         }
 
-        $imageTable = $this->_getImageTable();
-
-        $destImageRow = $imageTable->fetchRow(
-            $imageTable->select(true)
-                ->join(
-                    array('f' => $this->_formatedImageTableName),
-                    $this->_imageTableName . '.id = f.formated_image_id',
-                    null
-                )
-                ->where('f.image_id = ?', $imageId)
-                ->where('f.format = ?', (string)$formatName)
-        );
-
-        if (!$destImageRow) {
-
-            // find source image
-            $imageRow = $this->_getImageTable()->fetchRow(array(
-                'id = ?' => $imageId
-            ));
-            if (!$imageRow) {
-                $this->_raise("Image `$imageId` not found");
-            }
-
-            $dir = $this->getDir($imageRow->dir);
-            if (!$dir) {
-                $this->_raise("Dir '$dir' not defined");
-            }
-
-            $srcFilePath = $dir->getPath() . DIRECTORY_SEPARATOR . $imageRow->filepath;
-
-            $imagick = new Imagick();
-            $imagick->readImage($srcFilePath);
-
-            // format
-            $format = $this->getFormat($formatName);
-            if (!$format) {
-                $this->_raise("Format `$formatName` not found");
-            }
-
-            $sampler = $this->getImageSampler();
-            if (!$sampler) {
-                return $this->_raise("Image sampler not initialized");
-            }
-            $sampler->convertImagick($imagick, $format);
-
-            // store result
-            $newPath = implode(DIRECTORY_SEPARATOR, array(
-                $imageRow->dir,
-                $formatName,
-                $imageRow->filepath
-            ));
-            $pi = pathinfo($newPath);
-            $formatedImageId = $this->addImageFromImagick(
-                $imagick, $this->_formatedImageDirName,
-                array(
-                    'extension' => $pi['extension'],
-                    'pattern'   => $pi['dirname'] . DIRECTORY_SEPARATOR . $pi['filename']
-                )
-            );
-
-            $imagick->clear();
-
-            $formatedImageTable = $this->_getFormatedImageTable();
-            $formatedImageRow = $formatedImageTable->createRow(array(
-                'format'            => (string)$formatName,
-                'image_id'          => $imageId,
-                'formated_image_id' => $formatedImageId
-            ));
-            $formatedImageRow->save();
-
-            // result
-            $destImageRow = $this->_getImageTable()->fetchRow(array(
-                'id = ?' => $formatedImageId
-            ));
-        }
-
-        return $destImageRow;
+        return $result[0];
     }
 
     /**
-     * @param int $imageId
+     * @param int|Autowp_Service_ImageStorage_Request $imageId
      * @return string
      * @throws Autowp_Service_ImageStorage_Exception
      */
-    public function getFormatedImageBlob($imageId, $formatName)
+    public function getFormatedImageBlob($request, $formatName)
     {
+        if (!$request instanceof Autowp_Service_ImageStorage_Request) {
+            $request = new Autowp_Service_ImageStorage_Request(array(
+                'imageId' => $request
+            ));
+        }
+
         return $this->_buildImageBlobResult(
-            $this->_getFormatedImageRow($imageId, $formatName)
+            $this->_getFormatedImageRow($request, $formatName)
         );
     }
 
     /**
-     * @param int $imageId
+     * @param int|Autowp_Service_ImageStorage_Request $request
      * @param string $format
      * @return Autowp_Service_ImageStorage_Image
      */
-    public function getFormatedImage($imageId, $formatName)
+    public function getFormatedImage($request, $formatName)
     {
+        if (is_array($request)) {
+            $request = new Autowp_Service_ImageStorage_Request($request);
+        } elseif (!$request instanceof Autowp_Service_ImageStorage_Request) {
+            $request = new Autowp_Service_ImageStorage_Request(array(
+                'imageId' => $request
+            ));
+        }
+
         return $this->_buildImageResult(
-            $this->_getFormatedImageRow($imageId, $formatName)
+            $this->_getFormatedImageRow($request, $formatName)
         );
+    }
+
+    /**
+     * @param array $images
+     * @param string $format
+     * @return array
+     */
+    public function getFormatedImages(array $requests, $formatName)
+    {
+        $result = array();
+        foreach ($this->_getFormatedImageRows($requests, $formatName) as $key => $row) {
+            $result[$key] = $this->_buildImageResult($row);
+        }
+
+        return $result;
     }
 
     /**
@@ -589,7 +708,7 @@ class Autowp_Service_ImageStorage
         // remove file & row
         $dir = $this->getDir($imageRow->dir);
         if (!$dir) {
-            $this->_raise("Dir '$dir' not defined");
+            $this->_raise("Dir '{$imageRow->dir}' not defined");
         }
 
         $filepath = implode(DIRECTORY_SEPARATOR, array(
@@ -685,6 +804,65 @@ class Autowp_Service_ImageStorage
     /**
      * @param string $dirName
      * @param array $options
+     * @param Closure $callback
+     * @return string
+     */
+    protected function _lockFile($dirName, array $options, Closure $callback)
+    {
+        $dir = $this->getDir($dirName);
+        if (!$dir) {
+            $this->_raise("Dir '$dirName' not defined");
+        }
+
+        $dirPath = $dir->getPath();
+
+        $lockAttemptsLeft = self::LOCK_MAX_ATTEMPTS;
+        $fileSuccess = false;
+        do {
+            $lockAttemptsLeft--;
+
+            $destFileName = $this->_createImagePath($dirName, $options);
+            $destFilePath = $dirPath . DIRECTORY_SEPARATOR . $destFileName;
+
+            $fp = fopen($destFilePath, 'c+');
+            if (!$fp) {
+                $this->_raise("Cannot open file '$destFilePath'");
+            }
+
+            if (!flock($fp, LOCK_EX | LOCK_NB)) {
+                // already locked, try next file
+                return $this->_raise("already locked, try next file");
+                fclose($fp);
+                continue;
+            }
+
+            if (false !== fgetc($fp)) {
+                // not empty, try next file
+                return $this->_raise("not empty, try next file $destFilePath");
+                flock($fp, LOCK_UN);
+                fclose($fp);
+                continue;
+            }
+
+            $callback($fp);
+
+            flock($fp, LOCK_UN);
+            fclose($fp);
+
+            $fileSuccess = true;
+
+        } while (($lockAttemptsLeft > 0) && !$fileSuccess);
+
+        if (!$fileSuccess) {
+            return $this->_raise("Cannot save to `$destFilePath` after few attempts");
+        }
+
+        return $destFileName;
+    }
+
+    /**
+     * @param string $dirName
+     * @param array $options
      * @param int $width
      * @param int $height
      * @param Closure $callback
@@ -703,52 +881,13 @@ class Autowp_Service_ImageStorage
         $insertAttemptException = null;
         do {
 
-            $lockAttemptsLeft = self::LOCK_MAX_ATTEMPTS;
-            $fileSuccess = false;
-            do {
-                $lockAttemptsLeft--;
+            $destFileName = $this->_lockFile($dirName, $options, $callback);
 
-                $destFileName = $this->_createImagePath($dirName, $options);
-                $destFilePath = $dirPath . DIRECTORY_SEPARATOR . $destFileName;
+            $filePath = $dirPath . DIRECTORY_SEPARATOR . $destFileName;
 
-                $fp = fopen($destFilePath, 'c+');
-                if (!$fp) {
-                    $this->_raise("Cannot open file '$destFilePath'");
-                }
-
-                if (!flock($fp, LOCK_EX | LOCK_NB)) {
-                    // already locked, try next file
-                    return $this->_raise("already locked, try next file");
-                    fclose($fp);
-                    continue;
-                }
-
-                if (false !== fgetc($fp)) {
-                    // not empty, try next file
-                    return $this->_raise("not empty, try next file $destFilePath");
-                    flock($fp, LOCK_UN);
-                    fclose($fp);
-                    continue;
-                }
-
-                $callback($fp);
-
-                flock($fp, LOCK_UN);
-                fclose($fp);
-
-                $fileSuccess = true;
-
-            } while (($lockAttemptsLeft > 0) && !$fileSuccess);
-
-            if (!$fileSuccess) {
-                return $this->_raise("Cannot save to `$destFilePath` after few attempts");
-            }
-
-            $this->_chmodFile($destFilePath);
+            $this->_chmodFile($filePath);
 
             // store to db
-            $filePath = $dir->getPath() . DIRECTORY_SEPARATOR . $destFileName;
-
             $imageRow = $this->_getImageTable()->createRow(array(
                 'width'    => $width,
                 'height'   => $height,
@@ -763,12 +902,6 @@ class Autowp_Service_ImageStorage
             } catch (Zend_Db_Exception $e) {
                 // duplicate or other error
                 $insertAttemptException = $e;
-                // drop saved file
-                if ($fileSuccess) {
-                    if (file_exists($destFilePath)) {
-                        unklink($destFilePath);
-                    }
-                }
             }
         } while (($insertAttemptsLeft > 0) && $insertAttemptException);
 
@@ -935,5 +1068,213 @@ class Autowp_Service_ImageStorage
         $row->save();
 
         return $this;
+    }
+
+    /**
+     * @param int $imageId
+     * @return boolean|string
+     */
+    public function getImageIPTC($imageId)
+    {
+        $imageRow = $this->_getImageRow($imageId);
+
+        if (!$imageRow) {
+            return false;
+        }
+
+        $dir = $this->getDir($imageRow->dir);
+        if (!$dir) {
+            return $this->_raise("Dir '{$imageRow->dir}' not defined");
+        }
+
+        $filepath = $dir->getPath() . DIRECTORY_SEPARATOR . $imageRow->filepath;
+
+        if (!file_exists($filepath)) {
+            return $this->_raise("File `$filepath` not found");
+        }
+
+        $iptcStr = '';
+        getimagesize($filepath, $info);
+        if (is_array($info) && array_key_exists('APP13', $info)) {
+            $IPTC = iptcparse($info['APP13']);
+            if (is_array($IPTC)) {
+                foreach ($IPTC as $key => $value) {
+                    $iptcStr .= "<b>IPTC Key:</b> ".htmlspecialchars($key)." <b>Contents:</b> ";
+                    foreach ($value as $innerkey => $innervalue) {
+                        if ( ($innerkey+1) != count($value) )
+                            $iptcStr .= htmlspecialchars($innervalue) . ", ";
+                        else
+                            $iptcStr .= htmlspecialchars($innervalue);
+                    }
+                    $iptcStr .= '<br />';
+                }
+            } else {
+                $iptcStr .= $IPTC;
+            }
+        }
+
+        return $iptcStr;
+    }
+
+    /**
+     * @param int $imageId
+     * @return boolean|string
+     */
+    public function getImageEXIF($imageId)
+    {
+        $imageRow = $this->_getImageRow($imageId);
+
+        if (!$imageRow) {
+            return false;
+        }
+
+        $dir = $this->getDir($imageRow->dir);
+        if (!$dir) {
+            return $this->_raise("Dir '{$imageRow->dir}' not defined");
+        }
+
+        $filepath = $dir->getPath() . DIRECTORY_SEPARATOR . $imageRow->filepath;
+
+        if (!file_exists($filepath)) {
+            return $this->_raise("File `$filepath` not found");
+        }
+
+        $exifStr = '';
+        try {
+            $NotSections = array('FILE', 'COMPUTED');
+            $exif = @exif_read_data($filepath, 0, true);
+            if ($exif !== false) {
+                foreach ($exif as $key => $section) {
+                    if (array_search($key, $NotSections) !== false)
+                        continue;
+
+                    $exifStr .= '<p>['.htmlspecialchars($key).']';
+                    foreach ($section as $name => $val) {
+                        $exifStr .= "<br />".htmlspecialchars($name).": ";
+                        if (is_array($val))
+                            $exifStr .= htmlspecialchars(implode(', ', $val));
+                        else
+                            $exifStr .= htmlspecialchars($val);
+                    }
+
+                    $exifStr .= '</p>';
+                }
+            }
+        } catch (Exception $e) {
+            $exifStr .= 'Ошибка при чтении EXIF: '.$e->getMessage();
+        }
+
+        return $exifStr;
+    }
+
+    public static function detectExtenstion($filepath)
+    {
+        list ($width, $height, $imageType) = getimagesize($filepath);
+
+        // подбираем имя для файла
+        switch ($imageType) {
+            case IMAGETYPE_JPEG:
+            case IMAGETYPE_PNG:
+                break;
+            default:
+                throw new Exception("Unsupported image type");
+        }
+        return image_type_to_extension($imageType, false);
+    }
+
+    /**
+     * @param int $imageId
+     * @param array $options
+     * @throws Exception
+     */
+    public function changeImageName($imageId, array $options = array())
+    {
+        $imageRow = $this->_getImageRow($imageId);
+        if (!$imageRow) {
+            return $this->_raise("Image `$imageId` not found");
+        }
+
+        $dir = $this->getDir($imageRow->dir);
+        if (!$dir) {
+            return $this->_raise("Dir '{$imageRow->dir}' not defined");
+        }
+
+        $dirPath = $dir->getPath();
+
+        $oldFilePath = $dirPath . DIRECTORY_SEPARATOR . $imageRow->filepath;
+
+        if (!isset($options['extension'])) {
+            $options['extension'] = self::detectExtenstion($oldFilePath);
+        }
+
+        $insertAttemptsLeft = self::INSERT_MAX_ATTEMPTS;
+        $insertAttemptException = null;
+        do {
+
+            $destFileName = $this->_lockFile($imageRow->dir, $options, function($fp) use($imageRow) {
+                fwrite($fp, $this->_buildImageBlobResult($imageRow));
+            });
+
+            $filePath = $dirPath . DIRECTORY_SEPARATOR . $destFileName;
+
+            $this->_chmodFile($filePath);
+
+            // store to db
+            $imageRow->setFromArray(array(
+                'filepath' => $destFileName
+            ));
+            try {
+                $imageRow->save();
+                $insertAttemptException = null;
+            } catch (Zend_Db_Exception $e) {
+                // duplicate or other error
+                $insertAttemptException = $e;
+            }
+        } while (($insertAttemptsLeft > 0) && $insertAttemptException);
+
+        if ($insertAttemptException) {
+            throw $insertAttemptException;
+        }
+
+        // remove old file
+        if (file_exists($oldFilePath)) {
+            unlink($oldFilePath);
+        }
+    }
+
+    /**
+     * @param string $file
+     * @param string $dirName
+     * @throws Exception
+     * @return int
+     */
+    public function registerImageFile($file, $dirName)
+    {
+        $dir = $this->getDir($dirName);
+        if (!$dir) {
+            $this->_raise("Dir '$dirName' not defined");
+        }
+
+        $dirPath = $dir->getPath();
+
+        $filePath = $dirPath . DIRECTORY_SEPARATOR . $file;
+        if (!$filePath) {
+            throw new Exception("File `$filePath` not found");
+        }
+
+        list($width, $height, $type, $attr) = getimagesize($filePath);
+
+        // store to db
+        $imageRow = $this->_getImageTable()->createRow(array(
+            'width'    => $width,
+            'height'   => $height,
+            'dir'      => $dirName,
+            'filesize' => filesize($filePath),
+            'filepath' => $file,
+            'date_add' => new Zend_Db_Expr('now()')
+        ));
+        $imageRow->save();
+
+        return $imageRow->id;
     }
 }
