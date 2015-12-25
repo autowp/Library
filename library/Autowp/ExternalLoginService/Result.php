@@ -26,23 +26,23 @@ class Autowp_ExternalLoginService_Result
      * @var Zend_Date
      */
     protected $_birthday = null;
-    
+
     /**
      * @var string
      */
     protected $_email = null;
-    
+
     /**
      * @var string
      */
     protected $_residence = null;
-    
-    
+
+
     /**
      * @var int
      */
     protected $_gender = null;
-    
+
     /**
      * @param array $options
      * @throws Autowp_Service_ImageStorage_Exception
@@ -120,12 +120,13 @@ class Autowp_ExternalLoginService_Result
         $profileUrl = (string)$profileUrl;
 
         if ($profileUrl) {
-            if (Zend_Uri::check($profileUrl)) {
+            $this->_profileUrl = $profileUrl;
+            /*if (Zend_Uri::check($profileUrl)) {
                 $this->_profileUrl = $profileUrl;
             } else {
                 $message = "Invalid profile url `$profileUrl`";
                 throw new Autowp_ExternalLoginService_Exception($message);
-            }
+            }*/
         } else {
             $this->_profileUrl = null;
         }
@@ -169,5 +170,81 @@ class Autowp_ExternalLoginService_Result
     public function getPhotoUrl()
     {
         return $this->_photoUrl;
+    }
+
+    /**
+     * @param string $email
+     * @return Autowp_ExternalLoginService_Result
+     */
+    public function setEmail($email)
+    {
+        $this->_email = (string)$email;
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getEmail()
+    {
+        return $this->_email;
+    }
+
+    /**
+     * @param Zend_Date $birthday
+     * @return Autowp_ExternalLoginService_Result
+     */
+    public function setBirthday($birthday)
+    {
+        $this->_birthday = $birthday;
+
+        return $this;
+    }
+
+    /**
+     * @return Zend_Date
+     */
+    public function getBirthday()
+    {
+        return $this->_birthday;
+    }
+
+    /**
+     * @param string $residence
+     * @return Autowp_ExternalLoginService_Result
+     */
+    public function setResidence($residence)
+    {
+        $this->_residence = (string)$residence;
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getResidence()
+    {
+        return $this->_residence;
+    }
+
+    /**
+     * @param int $gender
+     * @return Autowp_ExternalLoginService_Result
+     */
+    public function setGender($gender)
+    {
+        $this->_gender= (int)$gender;
+
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getGender()
+    {
+        return $this->_gender;
     }
 }

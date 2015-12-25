@@ -78,9 +78,9 @@ abstract class Autowp_ExternalLoginService_OAuth
             }
             $errorMessage = $httpErrorMessage;
             if ($oauth2ErrorMessage) {
-                $errorMessage .= ' (' . $oauth2ErrorMessage . ')';
+                $errorMessage .= ' (' . print_r($oauth2ErrorMessage, true) . ')';
             }
-            throw new Autowp_ExternalLoginService($errorMessage);
+            throw new Autowp_ExternalLoginService_Exception($errorMessage);
         }
 
         $body = $response->getBody();

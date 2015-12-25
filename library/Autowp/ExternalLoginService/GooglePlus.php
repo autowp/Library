@@ -48,4 +48,14 @@ class Autowp_ExternalLoginService_GooglePlus
 
         return new Autowp_ExternalLoginService_Result($data);
     }
+
+    public function getFriendsUrl(array $options)
+    {
+        throw new Autowp_ExternalLoginService_Exception("Not implemented");
+    }
+
+    public function serviceFriends($token)
+    {
+        throw new Autowp_ExternalLoginService_Exception("Not implemented");
+    }
 }
