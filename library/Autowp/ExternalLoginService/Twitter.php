@@ -1,7 +1,6 @@
 <?php
 
 class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Abstract
-    extends Autowp_ExternalLoginService_Abstract
 {
 
     /**
