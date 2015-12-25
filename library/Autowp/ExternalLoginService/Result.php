@@ -23,6 +23,27 @@ class Autowp_ExternalLoginService_Result
     protected $_photoUrl = null;
 
     /**
+     * @var Zend_Date
+     */
+    protected $_birthday = null;
+    
+    /**
+     * @var string
+     */
+    protected $_email = null;
+    
+    /**
+     * @var string
+     */
+    protected $_residence = null;
+    
+    
+    /**
+     * @var int
+     */
+    protected $_gender = null;
+    
+    /**
      * @param array $options
      * @throws Autowp_Service_ImageStorage_Exception
      */

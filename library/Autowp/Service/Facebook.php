@@ -26,6 +26,10 @@ class Autowp_Service_Facebook
         'state',
         'signed_request',
     );
+    const PERMISSION_EMAIL = 'email',
+          PERMISSION_LOCATION = 'user_location',
+          PERMISSION_BIRTHDAY = 'user_birthday',
+          PERMISSION_FRIENDS = 'user_friends';
 
     /**
      * Maps aliases to Facebook domains.
@@ -86,7 +90,13 @@ class Autowp_Service_Facebook
     protected $_session;
 
     protected static $kSupportedKeys = array('state', 'code', 'access_token', 'user_id');
-
+    
+    /**
+     * The Application Permissions.
+     *
+     * @var array
+     */
+    protected $scope = array();
     /**
      * Initialize a Facebook Application.
      *
@@ -329,7 +339,7 @@ class Autowp_Service_Facebook
         $this->establishCSRFTokenState();
 
         // if 'scope' is passed as an array, convert to comma separated list
-        $scopeParams = isset($params['scope']) ? $params['scope'] : null;
+        $scopeParams = isset($this->scope) ? $this->scope : null;
         if ($scopeParams && is_array($scopeParams)) {
             $params['scope'] = implode(',', $scopeParams);
         }
@@ -584,7 +594,7 @@ class Autowp_Service_Facebook
         } else {
             $domainKey = 'graph';
         }
-
+        
         $result = json_decode($this->_oauthRequest(
             $this->getUrl($domainKey, $path),
             $params
@@ -752,7 +762,8 @@ class Autowp_Service_Facebook
             'users.hasapppermission' => 1,
             'users.isappuser' => 1,
             'users.isverified' => 1,
-            'video.getuploadlimits' => 1
+            'video.getuploadlimits' => 1,
+            'user.birthday' => 1
         );
         $name = 'api';
         if (isset($READ_ONLY_CALLS[strtolower($method)])) {
@@ -1013,5 +1024,27 @@ class Autowp_Service_Facebook
             $this->getAppId(),
             $key
         ));
+    }
+    
+    /**
+     * Set the App Secret.
+     *
+     * @param string $appSecret The App Secret
+     * @return BaseFacebook
+     */
+    public function setPermission($permission)
+    {
+        $this->scope[] = $permission;
+        return $this;
+    }
+    
+    /**
+     * Get the App Secret.
+     *
+     * @return string the App Secret
+     */
+    public function getPermission()
+    {
+        return $this->scope;
     }
 }
