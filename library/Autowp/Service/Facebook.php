@@ -337,7 +337,6 @@ class Autowp_Service_Facebook
     public function getLoginUrl($params = array())
     {
         $this->establishCSRFTokenState();
-
         // if 'scope' is passed as an array, convert to comma separated list
         $scopeParams = isset($this->scope) ? $this->scope : null;
         if ($scopeParams && is_array($scopeParams)) {
@@ -973,7 +972,6 @@ class Autowp_Service_Facebook
         }
 
         $session = $this->_getSession();
-
         $session_var_name = $this->_constructSessionVariableName($key);
         return isset($session->$session_var_name) ?
               $session->$session_var_name : $default;

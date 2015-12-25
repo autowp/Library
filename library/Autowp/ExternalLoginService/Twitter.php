@@ -23,45 +23,40 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
 
     protected function _getSession ()
     {
-        if (!$this->_session) {
         return $this->_session ? $this->_session : $this->_session = new Zend_Session_Namespace(
                 'Twitter');
-    }
-
-        return $this->_session;
     }
 
     public function getConsumer (array $options = array())
     {
         if (! $this->_consumer) {
             $consumerOptions = array(
-                    'requestScheme' => Zend_Oauth::REQUEST_SCHEME_HEADER,
-                    'requestTokenUrl' => 'https://api.twitter.com/oauth/request_token',
-                    'accessTokenUrl' => 'https://api.twitter.com/oauth/access_token',
-                    'siteUrl' => "http://twitter.com/oauth",
-                    'consumerKey' => $this->_options['consumerKey'],
-                    'consumerSecret' => $this->_options['consumerSecret']
+                'requestScheme'   => Zend_Oauth::REQUEST_SCHEME_HEADER,
+                'requestTokenUrl' => 'https://api.twitter.com/oauth/request_token',
+                'accessTokenUrl'  => 'https://api.twitter.com/oauth/access_token',
+                'siteUrl'         => "http://twitter.com/oauth",
+                'consumerKey'     => $this->_options['consumerKey'],
+                'consumerSecret'  => $this->_options['consumerSecret']
             );
             if (isset($options['redirect_uri'])) {
                 $consumerOptions['callbackUrl'] = $options['redirect_uri'];
             }
             $this->_consumer = new Zend_Oauth_Consumer($consumerOptions);
         }
-        
+
         return $this->_consumer;
     }
 
     /**
      *
-     * @param array $options            
+     * @param array $options
      * @return string
      */
     public function getLoginUrl (array $options)
     {
-        $consumer = $this->getConsumer(
-                array(
-                        'redirect_uri' => $options['redirect_uri']
-                ));
+        $consumer = $this->getConsumer(array(
+            'redirect_uri' => $options['redirect_uri']
+        ));
         $this->_getSession()->requestToken = $consumer->getRequestToken();
         return $consumer->getRedirectUrl();
     }
@@ -73,40 +68,35 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
      */
     public function getFriendsUrl (array $options)
     {
-        $consumer = $this->getConsumer(
-                array(
-                        'redirect_uri' => $options['redirect_uri']
-                ));
+        $consumer = $this->getConsumer(array(
+            'redirect_uri' => $options['redirect_uri']
+        ));
         $this->_getSession()->requestToken = $consumer->getRequestToken();
-
         return $consumer->getRedirectUrl();
     }
-    
+
     /**
      *
-     * @param array $params            
+     * @param array $params
      */
     public function callback (array $params)
     {
         if (isset($params['denied']) && $params['denied']) {
             return false;
         }
-
         $session = $this->_getSession();
-
         if (! isset($this->_getSession()->requestToken)) {
             $message = 'Request token not set';
             throw new Autowp_ExternalLoginService_Exception($message);
         }
-        
-        $consumer = $this->getConsumer(
-                array(
-                        'redirect_uri' => $params['redirect_uri']
-                ));
-        $this->_accessToken = $consumer->getAccessToken($params, 
+
+        $consumer = $this->getConsumer(array(
+            'redirect_uri' => $params['redirect_uri']
+        ));
+        $this->_accessToken = $consumer->getAccessToken($params,
                 $this->_getSession()->requestToken);
         unset($this->_getSession()->requestToken);
-        
+
         return $this->_accessToken;
     }
 
@@ -117,37 +107,34 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
      */
     public function getData ()
     {
-        $twitter = new Zend_Service_Twitter(
-                array(
-                        'username' => $this->_accessToken->getParam(
-                                'screen_name'),
-                        'accessToken' => $this->_accessToken,
-                        'oauthOptions' => array(
-                                'consumerKey' => $this->_options['consumerKey'],
-                                'consumerSecret' => $this->_options['consumerSecret']
-                        )
-                ));
+        $twitter = new Zend_Service_Twitter(array(
+            'username'     => $this->_accessToken->getParam('screen_name'),
+            'accessToken'  => $this->_accessToken,
+            'oauthOptions' => array(
+                'consumerKey'    => $this->_options['consumerKey'],
+                'consumerSecret' => $this->_options['consumerSecret']
+            )
+        ));
         $response = $twitter->account->verifyCredentials();
-        
+
         if (!$response->isSuccess()) {
             $message = 'Error requesting data';
             throw new Autowp_ExternalLoginService_Exception($message);
         }
-        
-        $values = $response->toValue();
 
+        $values = $response->toValue();
         $imageUrl = null;
         if ($values->profile_image_url) {
             $imageUrl = str_replace('_normal', '', $values->profile_image_url);
         }
-        
+
         $data = array(
-                'externalId' => $values->id,
-                'name' => $values->name,
-                'profileUrl' => 'http://twitter.com/' . $values->screen_name,
-                'photoUrl' => $imageUrl
+            'externalId' => $values->id,
+            'name'       => $values->name,
+            'profileUrl' => 'http://twitter.com/' . $values->screen_name,
+            'photoUrl'   => $imageUrl
         );
-        
+
         return new Autowp_ExternalLoginService_Result($data);
     }
 
@@ -157,32 +144,27 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
      * @return array Account_Row
      */
     public function serviceFriends ($token)
-    {        
+    {
         $this->_accessToken = $token;
-        
-        $twitter = new Zend_Service_Twitter(
-                array(
-                        'username' => $this->_accessToken->getParam(
-                                'screen_name'),
-                        'accessToken' => $this->_accessToken,
-                        'oauthOptions' => array(
-                                'consumerKey' => $this->_options['consumerKey'],
-                                'consumerSecret' => $this->_options['consumerSecret']
-                        )
-                ));
+
+        $twitter = new Zend_Service_Twitter(array(
+            'username'     => $this->_accessToken->getParam('screen_name'),
+            'accessToken'  => $this->_accessToken,
+            'oauthOptions' => array(
+                'consumerKey'    => $this->_options['consumerKey'],
+                'consumerSecret' => $this->_options['consumerSecret']
+            )
+        ));
         $cursor = - 1;
         $friendsId = array();
         $count = 1000;
         while (true) {
-            $client = $twitter->getHttpClient()->setUri(
-                    'https://api.twitter.com/1.1/friends/ids.json');
-            $client->setParameterGet(
-                    array(
-                            "user_id" => $this->_accessToken->getParam(
-                                    'user_id'),
-                            'cursor' => $cursor,
-                            'count' => $count
-                    ));
+            $client = $twitter->getHttpClient()->setUri('https://api.twitter.com/1.1/friends/ids.json');
+            $client->setParameterGet(array(
+                "user_id" => $this->_accessToken->getParam('user_id'),
+                'cursor'  => $cursor,
+                'count'   => $count
+            ));
             $client->setEncType();
             $response = $client->request('GET');
             if ($response->isSuccessful()) {
@@ -201,7 +183,7 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
         }
         return $friendsId;
     }
-    
+
     public function setAccessToken(array $params)
     {
         $this->_accessToken = new Zend_Oauth_Token_Access();

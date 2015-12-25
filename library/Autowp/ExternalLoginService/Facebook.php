@@ -22,7 +22,6 @@ class Autowp_ExternalLoginService_Facebook
         if ($this->_facebook === null) {
             $this->_facebook = new Autowp_Service_Facebook($this->_options);
         }
-
         return $this->_facebook;
     }
 
@@ -34,10 +33,10 @@ class Autowp_ExternalLoginService_Facebook
     {
         $this->_getFacebook()->setPermission(Autowp_Service_Facebook::PERMISSION_FRIENDS);
         return $this->_getFacebook()->getLoginUrl(array(
-                'redirect_uri' => $options['redirect_uri']
+            'redirect_uri' => $options['redirect_uri']
         ));
     }
-    
+
     /**
      * @param array $options
      * @return string
@@ -45,8 +44,8 @@ class Autowp_ExternalLoginService_Facebook
     public function getLoginUrl(array $options)
     {
         $this->_getFacebook()
-        ->setPermission(Autowp_Service_Facebook::PERMISSION_LOCATION)
-        ->setPermission(Autowp_Service_Facebook::PERMISSION_BIRTHDAY);
+            ->setPermission(Autowp_Service_Facebook::PERMISSION_LOCATION)
+            ->setPermission(Autowp_Service_Facebook::PERMISSION_BIRTHDAY);
         return $this->_getFacebook()->getLoginUrl(array(
             'redirect_uri' => $options['redirect_uri']
         ));
@@ -61,7 +60,6 @@ class Autowp_ExternalLoginService_Facebook
 
         $redirectUri = $params['redirect_uri'];
         unset($params['redirect_uri']);
-
         return $facebook->getAccessToken($params, $redirectUri);
     }
 
@@ -72,7 +70,6 @@ class Autowp_ExternalLoginService_Facebook
     public function getData()
     {
         $json = $this->_getFacebook()->api('/me');
-
         $data = array(
             'externalId' => null,
             'name'       => null,
