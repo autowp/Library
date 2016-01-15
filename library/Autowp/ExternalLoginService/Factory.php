@@ -5,7 +5,7 @@ class Autowp_ExternalLoginService_Factory
     /**
      * @var array
      */
-    protected $_options;
+    private $_options;
 
     public function __construct(array $options)
     {
@@ -17,7 +17,7 @@ class Autowp_ExternalLoginService_Factory
      * @return Autowp_ExternalLoginService_Abstract
      * @throws Exception
      */
-    public function getService($service)
+    public function getService($service, array $options)
     {
         $service = trim($service);
         if (!isset($this->_options[$service])) {
@@ -28,7 +28,8 @@ class Autowp_ExternalLoginService_Factory
 
         $className = 'Autowp_ExternalLoginService_' . ucfirst($filter->filter($service));
 
-        $serviceObj = new $className($this->_options[$service]);
+        $serviceOptions = array_replace($this->_options[$service], $options);
+        $serviceObj = new $className($serviceOptions);
 
         if (!$serviceObj instanceof Autowp_ExternalLoginService_Abstract) {
             throw new Autowp_ExternalLoginService_Exception(

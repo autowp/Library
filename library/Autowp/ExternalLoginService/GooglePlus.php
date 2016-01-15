@@ -1,18 +1,24 @@
 <?php
 
 class Autowp_ExternalLoginService_GooglePlus
-    extends Autowp_ExternalLoginService_OAuth
+    extends Autowp_ExternalLoginService_LeagueOAuth2
 {
-    /**
-     * @var string
-     */
-    protected $_accessToken;
-
-    public function _processCallback($accessToken, $data)
+    protected function _createProvider()
     {
-        $this->_accessToken = $accessToken;
+        return new League\OAuth2\Client\Provider\Google([
+            'clientId'     => $this->_options['clientId'],
+            'clientSecret' => $this->_options['clientSecret'],
+            'redirectUri'  => $this->_options['redirect_uri'],
+            'userFields'   => ['id', 'displayName', 'url', 'image(url)']
+            //'hostedDomain' => 'example.com',
+        ]);
+    }
 
-        return (bool)$this->_accessToken;
+    protected function _getAuthorizationUrl()
+    {
+        return $this->_getProvider()->getAuthorizationUrl(array(
+            'scope' => 'https://www.googleapis.com/auth/plus.me'
+        ));
     }
 
     /**
@@ -21,6 +27,8 @@ class Autowp_ExternalLoginService_GooglePlus
      */
     public function getData()
     {
+        $provider = $this->_getProvider();
+
         $data = array(
             'externalId' => null,
             'name'       => null,
@@ -28,25 +36,18 @@ class Autowp_ExternalLoginService_GooglePlus
             'photoUrl'   => null
         );
 
-        $json = $this->_genericApiCall('https://www.googleapis.com/plus/v1/people/me', array(
-            'access_token' => $this->_accessToken,
-            'fields'       => 'id,displayName,url,image(url)'
+        $ownerDetails = $provider->getResourceOwner($this->_accessToken);
+
+        $ownerDetailsArray = $ownerDetails->toArray();
+
+        $data['externalId'] = $ownerDetailsArray['id'];
+
+        return new Autowp_ExternalLoginService_Result(array(
+            'externalId' => $ownerDetailsArray['id'],
+            'name'       => $ownerDetailsArray['displayName'],
+            'profileUrl' => $ownerDetailsArray['url'],
+            'photoUrl'   => $ownerDetailsArray['image']['url']
         ));
-
-        if (isset($json['id']) && $json['id']) {
-            $data['externalId'] = $json['id'];
-        }
-        if (isset($json['displayName']) && $json['displayName']) {
-            $data['name'] = $json['displayName'];
-        }
-        if (isset($json['url']) && $json['url']) {
-            $data['profileUrl'] = $json['url'];
-        }
-        if (isset($json['image']['url']) && $json['image']['url']) {
-            $data['photoUrl'] = $json['image']['url'];
-        }
-
-        return new Autowp_ExternalLoginService_Result($data);
     }
 
     public function getFriendsUrl(array $options)

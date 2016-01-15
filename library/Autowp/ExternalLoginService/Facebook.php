@@ -1,12 +1,30 @@
 <?php
 
 class Autowp_ExternalLoginService_Facebook
-    extends Autowp_ExternalLoginService_Abstract
+    extends Autowp_ExternalLoginService_LeagueOAuth2
 {
+    protected function _createProvider()
+    {
+        return new League\OAuth2\Client\Provider\Facebook([
+            'clientId'        => $this->_options['clientId'],
+            'clientSecret'    => $this->_options['clientSecret'],
+            'redirectUri'     => $this->_options['redirect_uri'],
+            'graphApiVersion' => 'v2.5',
+            //'userFields'   => ['id', 'displayName', 'url', 'image(url)']
+            //'hostedDomain' => 'example.com',
+        ]);
+    }
+
+    protected function _getAuthorizationUrl()
+    {
+        return $this->_getProvider()->getAuthorizationUrl();
+    }
+
+
     /**
      * @var Autowp_Service_Facebook
      */
-    protected $_facebook = null;
+    //protected $_facebook = null;
 
     /**
      * @var string
@@ -17,13 +35,13 @@ class Autowp_ExternalLoginService_Facebook
     /**
      * @return Autowp_Service_Facebook
      */
-    protected function _getFacebook()
+    /*protected function _getFacebook()
     {
         if ($this->_facebook === null) {
             $this->_facebook = new Autowp_Service_Facebook($this->_options);
         }
         return $this->_facebook;
-    }
+    }*/
 
     /**
      * @param array $options
@@ -31,17 +49,17 @@ class Autowp_ExternalLoginService_Facebook
      */
     public function getFriendsUrl(array $options)
     {
-        $this->_getFacebook()->setPermission(Autowp_Service_Facebook::PERMISSION_FRIENDS);
+        /*$this->_getFacebook()->setPermission(Autowp_Service_Facebook::PERMISSION_FRIENDS);
         return $this->_getFacebook()->getLoginUrl(array(
             'redirect_uri' => $options['redirect_uri']
-        ));
+        ));*/
     }
 
     /**
      * @param array $options
      * @return string
      */
-    public function getLoginUrl(array $options)
+    /*public function getLoginUrl(array $options)
     {
         $this->_getFacebook()
             ->setPermission(Autowp_Service_Facebook::PERMISSION_LOCATION)
@@ -49,19 +67,19 @@ class Autowp_ExternalLoginService_Facebook
         return $this->_getFacebook()->getLoginUrl(array(
             'redirect_uri' => $options['redirect_uri']
         ));
-    }
+    }*/
 
     /**
      * @param array $params
      */
-    public function callback(array $params)
+    /*public function callback(array $params)
     {
         $facebook = $this->_getFacebook();
 
         $redirectUri = $params['redirect_uri'];
         unset($params['redirect_uri']);
         return $facebook->getAccessToken($params, $redirectUri);
-    }
+    }*/
 
     /**
      * @see Autowp_ExternalLoginService_Abstract::getData()
@@ -69,16 +87,21 @@ class Autowp_ExternalLoginService_Facebook
      */
     public function getData()
     {
-        $json = $this->_getFacebook()->api('/me');
+        $provider = $this->_getProvider();
+
+        $ownerDetails = $provider->getResourceOwner($this->_accessToken);
+
+        $json = $ownerDetails->toArray();
+
         $data = array(
             'externalId' => null,
             'name'       => null,
             'profileUrl' => null,
             'photoUrl'   => null,
-            'birthday' => null,
-            'email' => null,
-            'residence' => null,
-            'gender' => null
+            'birthday'   => null,
+            'email'      => null,
+            'residence'  => null,
+            'gender'     => null
         );
         if (isset($json['id']) && $json['id']) {
             $data['externalId'] = $json['id'];
@@ -113,12 +136,12 @@ class Autowp_ExternalLoginService_Facebook
      * @param string $accessToken
      * @return Autowp_ExternalLoginService_Facebook
      */
-    public function setAccessToken($accessToken)
+    /*public function setAccessToken($accessToken)
     {
         $this->_getFacebook()->setAccessToken($accessToken);
 
         return $this;
-    }
+    }*/
 
     /**
      * @see Autowp_ExternalLoginService_Abstract::getFriends()
@@ -126,6 +149,9 @@ class Autowp_ExternalLoginService_Facebook
      */
     public function serviceFriends ($token)
     {
+        /*
+
+
         $this->_getFacebook()->setAccessToken($token);
 
         $limit = 1000;
@@ -148,6 +174,6 @@ class Autowp_ExternalLoginService_Facebook
                 throw new Autowp_ExternalLoginService_Exception($message);
             }
         }
-        return $friendsId;
+        return $friendsId;*/
     }
 }

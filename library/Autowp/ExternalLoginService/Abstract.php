@@ -11,7 +11,7 @@ abstract class Autowp_ExternalLoginService_Abstract
      * @param array $options
      * @return string
      */
-    abstract public function getLoginUrl(array $options);
+    abstract public function getLoginUrl();
 
     /**
      * @param array $options

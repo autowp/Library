@@ -1,24 +1,44 @@
 <?php
 
-class Autowp_ExternalLoginService_Vk extends Autowp_ExternalLoginService_OAuth
+class Autowp_ExternalLoginService_Vk
+    extends Autowp_ExternalLoginService_LeagueOAuth2
 {
+    protected function _createProvider()
+    {
+        return new League\OAuth2\Client\Provider\Google([
+            'clientId'       => $this->_options['clientId'],
+            'clientSecret'   => $this->_options['clientSecret'],
+            'redirectUri'    => $this->_options['redirect_uri'],
+            'urlAuthorize'   => 'https://oauth.vk.com/authorize',
+            'urlAccessToken' => 'https://oauth.vk.com/access_token',
+        ]);
+    }
+
+    protected function _getAuthorizationUrl()
+    {
+        return $this->_getProvider()->getAuthorizationUrl();
+    }
+
     protected $_vkUserId = null;
 
-    protected $_accessToken = null;
-
-    /**
-     * @see Autowp_ExternalLoginService_OAuth::_processCallback()
-     */
-    public function _processCallback($accessToken, $data)
+    public function callback(array $params)
     {
-        if (!isset($data['user_id'])) {
-            throw new Autowp_ExternalLoginService_Exception("'user_id' was not provided");
+        $result = parent::callback($params);
+
+        if ($result) {
+            $this->_vkUserId = $params['user_id'];
         }
 
-        $this->_accessToken = $accessToken;
-        $this->_vkUserId = $data['user_id'];
+        return $result;
+    }
 
-        return (bool)$this->_vkUserId;
+    public function getResourceOwnerDetailsUrl(AccessToken $token)
+    {
+        $fields = array_merge($this->defaultUserFields, $this->userFields);
+        return 'https://api.vkontakte.ru/method/getProfiles?' . http_build_query([
+            'uid'    => $this->_vkUserId,
+            'fields' => 'uid,first_name,last_name,nickname,screen_name,photo_medium'
+        ]);
     }
 
     /**
@@ -27,6 +47,10 @@ class Autowp_ExternalLoginService_Vk extends Autowp_ExternalLoginService_OAuth
      */
     public function getData()
     {
+        $provider = $this->_getProvider();
+
+        $ownerDetails = $provider->getResourceOwner($this->_accessToken);
+
         $data = array(
             'externalId' => $this->_vkUserId,
             'name'       => null,
@@ -34,11 +58,7 @@ class Autowp_ExternalLoginService_Vk extends Autowp_ExternalLoginService_OAuth
             'photoUrl'   => null
         );
 
-        $json = $this->_genericApiCall('https://api.vkontakte.ru/method/getProfiles', array(
-            'access_token' => $this->_accessToken,
-            'uid'          => $this->_vkUserId,
-            'fields'       => 'uid,first_name,last_name,nickname,screen_name,photo_medium'
-        ));
+        $json = $ownerDetails->toArray();
 
         if (!isset($json['response'])) {
             throw new Autowp_ExternalLoginService_Exception('Key "response" not found');
