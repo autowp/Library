@@ -3,14 +3,20 @@
 class Autowp_ExternalLoginService_Vk
     extends Autowp_ExternalLoginService_LeagueOAuth2
 {
+    /**
+     * @return Zend_Session_Namespace
+     */
+    protected function _getOauthSession()
+    {
+        return new Zend_Session_Namespace(__CLASS__);
+    }
+
     protected function _createProvider()
     {
-        return new League\OAuth2\Client\Provider\Google([
-            'clientId'       => $this->_options['clientId'],
-            'clientSecret'   => $this->_options['clientSecret'],
-            'redirectUri'    => $this->_options['redirect_uri'],
-            'urlAuthorize'   => 'https://oauth.vk.com/authorize',
-            'urlAccessToken' => 'https://oauth.vk.com/access_token',
+        return new Autowp\OAuth2\Client\Provider\Vk([
+            'clientId'     => $this->_options['clientId'],
+            'clientSecret' => $this->_options['clientSecret'],
+            'redirectUri'  => $this->_options['redirect_uri'],
         ]);
     }
 
@@ -19,73 +25,59 @@ class Autowp_ExternalLoginService_Vk
         return $this->_getProvider()->getAuthorizationUrl();
     }
 
-    protected $_vkUserId = null;
-
-    public function callback(array $params)
-    {
-        $result = parent::callback($params);
-
-        if ($result) {
-            $this->_vkUserId = $params['user_id'];
-        }
-
-        return $result;
-    }
-
-    public function getResourceOwnerDetailsUrl(AccessToken $token)
-    {
-        $fields = array_merge($this->defaultUserFields, $this->userFields);
-        return 'https://api.vkontakte.ru/method/getProfiles?' . http_build_query([
-            'uid'    => $this->_vkUserId,
-            'fields' => 'uid,first_name,last_name,nickname,screen_name,photo_medium'
-        ]);
-    }
-
     /**
      * @see Autowp_ExternalLoginService_Abstract::getData()
      * @return Autowp_ExternalLoginService_Result
      */
-    public function getData()
+    public function getData(array $options)
     {
         $provider = $this->_getProvider();
+
+        if (isset($options['language'])) {
+            $provider->setLang($options['language']);
+        }
 
         $ownerDetails = $provider->getResourceOwner($this->_accessToken);
 
         $data = array(
-            'externalId' => $this->_vkUserId,
+            'externalId' => null,
             'name'       => null,
             'profileUrl' => null,
             'photoUrl'   => null
         );
 
-        $json = $ownerDetails->toArray();
+        $vkUser = $ownerDetails->toArray();
 
-        if (!isset($json['response'])) {
-            throw new Autowp_ExternalLoginService_Exception('Key "response" not found');
+        if (isset($vkUser['uid']) && $vkUser['uid']) {
+            $data['externalId'] = $vkUser['uid'];
         }
 
-        $vkUsers = $json['response'];
-        foreach ($vkUsers as $vkUser) {
-            if ($vkUser['uid'] == $this->_vkUserId) {
-                $firstName = false;
-                if (isset($vkUser['first_name']) && $vkUser['first_name']) {
-                    $firstName = $vkUser['first_name'];
-                }
-                $lastName = false;
-                if (isset($vkUser['last_name']) && $vkUser['last_name']) {
-                    $lastName = $vkUser['last_name'];
-                }
-                $data['name'] = $firstName . ($firstName && $lastName ? ' ' : '') . $lastName;
-                if (isset($vkUser['screen_name']) && $vkUser['screen_name']) {
-                    $data['profileUrl'] = 'http://vk.com/' . $vkUser['screen_name'];
-                }
-                if (isset($vkUser['photo_medium']) && $vkUser['photo_medium']) {
-                    $data['photoUrl'] = $vkUser['photo_medium'];
-                }
-                break;
-            }
+        $firstName = false;
+        if (isset($vkUser['first_name']) && $vkUser['first_name']) {
+            $firstName = $vkUser['first_name'];
+        }
+        $lastName = false;
+        if (isset($vkUser['last_name']) && $vkUser['last_name']) {
+            $lastName = $vkUser['last_name'];
+        }
+        $data['name'] = $firstName . ($firstName && $lastName ? ' ' : '') . $lastName;
+        if (isset($vkUser['screen_name']) && $vkUser['screen_name']) {
+            $data['profileUrl'] = 'http://vk.com/' . $vkUser['screen_name'];
+        }
+        if (isset($vkUser['photo_medium']) && $vkUser['photo_medium']) {
+            $data['photoUrl'] = $vkUser['photo_medium'];
         }
 
         return new Autowp_ExternalLoginService_Result($data);
+    }
+
+    public function serviceFriends($token)
+    {
+        throw new Exception("Not implemented");
+    }
+
+    public function getFriendsUrl(array $options)
+    {
+        throw new Exception("Not implemented");
     }
 }

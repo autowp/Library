@@ -3,6 +3,14 @@
 class Autowp_ExternalLoginService_GooglePlus
     extends Autowp_ExternalLoginService_LeagueOAuth2
 {
+    /**
+     * @return Zend_Session_Namespace
+     */
+    protected function _getOauthSession()
+    {
+        return new Zend_Session_Namespace(__CLASS__);
+    }
+
     protected function _createProvider()
     {
         return new League\OAuth2\Client\Provider\Google([
@@ -25,7 +33,7 @@ class Autowp_ExternalLoginService_GooglePlus
      * @see Autowp_ExternalLoginService_Abstract::getData()
      * @return Autowp_ExternalLoginService_Result
      */
-    public function getData()
+    public function getData(array $options)
     {
         $provider = $this->_getProvider();
 

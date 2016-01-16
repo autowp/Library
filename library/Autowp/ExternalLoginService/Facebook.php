@@ -44,6 +44,14 @@ class Autowp_ExternalLoginService_Facebook
     }*/
 
     /**
+     * @return Zend_Session_Namespace
+     */
+    protected function _getOauthSession()
+    {
+        return new Zend_Session_Namespace(__CLASS__);
+    }
+
+    /**
      * @param array $options
      * @return string
      */
@@ -85,7 +93,7 @@ class Autowp_ExternalLoginService_Facebook
      * @see Autowp_ExternalLoginService_Abstract::getData()
      * @return Autowp_ExternalLoginService_Result
      */
-    public function getData()
+    public function getData(array $options)
     {
         $provider = $this->_getProvider();
 
@@ -123,11 +131,7 @@ class Autowp_ExternalLoginService_Facebook
             $data['residence'] = $json['location']['name'];
         }
         if (isset($json['gender']) && $json['gender']) {
-            $genderTable = new Gender();
-            $gender = $genderTable->fetchRow(array("lower(name) = ?" => strtolower($json['gender'])));
-            if ($gender) {
-                $data['gender'] = $gender->id;
-            }
+            $data['gender'] = $json['gender'];
         }
         return new Autowp_ExternalLoginService_Result($data);
     }

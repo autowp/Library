@@ -2,7 +2,6 @@
 
 class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Abstract
 {
-
     /**
      *
      * @var Zend_Oauth_Consumer
@@ -38,8 +37,8 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
                 'consumerKey'     => $this->_options['consumerKey'],
                 'consumerSecret'  => $this->_options['consumerSecret']
             );
-            if (isset($options['redirect_uri'])) {
-                $consumerOptions['callbackUrl'] = $options['redirect_uri'];
+            if (isset($this->_options['redirect_uri'])) {
+                $consumerOptions['callbackUrl'] = $this->_options['redirect_uri'];
             }
             $this->_consumer = new Zend_Oauth_Consumer($consumerOptions);
         }
@@ -52,10 +51,10 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
      * @param array $options
      * @return string
      */
-    public function getLoginUrl(array $options)
+    public function getLoginUrl()
     {
         $consumer = $this->getConsumer(array(
-            'redirect_uri' => $options['redirect_uri']
+            'redirect_uri' => $this->_options['redirect_uri']
         ));
         $this->_getSession()->requestToken = $consumer->getRequestToken();
         return $consumer->getRedirectUrl();
@@ -69,7 +68,7 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
     public function getFriendsUrl(array $options)
     {
         $consumer = $this->getConsumer(array(
-            'redirect_uri' => $options['redirect_uri']
+            'redirect_uri' => $this->_options['redirect_uri']
         ));
         $this->_getSession()->requestToken = $consumer->getRequestToken();
         return $consumer->getRedirectUrl();
@@ -91,7 +90,7 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
         }
 
         $consumer = $this->getConsumer(array(
-            'redirect_uri' => $params['redirect_uri']
+            'redirect_uri' => $this->_options['redirect_uri']
         ));
         $this->_accessToken = $consumer->getAccessToken($params,
                 $this->_getSession()->requestToken);
@@ -105,7 +104,7 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
      * @see Autowp_ExternalLoginService_Abstract::getData()
      * @return Autowp_ExternalLoginService_Result
      */
-    public function getData()
+    public function getData(array $options)
     {
         $twitter = new Zend_Service_Twitter(array(
             'username'     => $this->_accessToken->getParam('screen_name'),

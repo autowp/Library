@@ -16,10 +16,7 @@ abstract class Autowp_ExternalLoginService_LeagueOAuth2
     /**
      * @return Zend_Session_Namespace
      */
-    protected function _getOauthSession()
-    {
-        return new Zend_Session_Namespace(__CLASS__);
-    }
+    abstract protected function _getOauthSession();
 
     abstract protected function _createProvider();
 

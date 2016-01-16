@@ -28,7 +28,7 @@ abstract class Autowp_ExternalLoginService_Abstract
     /**
      * @return Autowp_ExternalLoginService_Result
      */
-    abstract public function getData();
+    abstract public function getData(array $options);
 
     /**
      * @param Account_Row $account

@@ -934,14 +934,14 @@ class Autowp_Service_ImageStorage
 
         $format = $imagick->getImageFormat();
 
-        switch ($format) {
-            case 'GIF':
+        switch (strtolower($format)) {
+            case 'gif':
                 $options['extension'] = 'gif';
                 break;
-            case 'JPEG':
+            case 'jpeg':
                 $options['extension'] = 'jpg';
                 break;
-            case 'PNG':
+            case 'png':
                 $options['extension'] = 'png';
                 break;
             default:
