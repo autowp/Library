@@ -14,10 +14,8 @@ abstract class Autowp_ExternalLoginService_LeagueOAuth2
     protected $_accessToken;
 
     /**
-     * @return Zend_Session_Namespace
+     * @return League\OAuth2\Client\Provider\AbstractProvider
      */
-    abstract protected function _getOauthSession();
-
     abstract protected function _createProvider();
 
     /**
@@ -32,25 +30,23 @@ abstract class Autowp_ExternalLoginService_LeagueOAuth2
         return $this->_provider;
     }
 
+    /**
+     * @return string
+     */
     abstract protected function _getAuthorizationUrl();
+
+    public function getState()
+    {
+        return $this->_getProvider()->getState();
+    }
 
     public function getLoginUrl()
     {
-        $provider = $this->_getProvider();
-
-        $authUrl = $this->_getAuthorizationUrl();
-
-        $this->_getOauthSession()->state = $provider->getState();
-
-        return $authUrl;
+        return $this->_getAuthorizationUrl();
     }
 
     public function callback(array $params)
     {
-        if ($this->_getOauthSession()->state !== $params['state']) {
-            throw new Exception("State is invalid");
-        }
-
         $provider = $this->_getProvider();
 
         $this->_accessToken = $provider->getAccessToken('authorization_code', [

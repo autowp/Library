@@ -3,14 +3,6 @@
 class Autowp_ExternalLoginService_Vk
     extends Autowp_ExternalLoginService_LeagueOAuth2
 {
-    /**
-     * @return Zend_Session_Namespace
-     */
-    protected function _getOauthSession()
-    {
-        return new Zend_Session_Namespace(__CLASS__);
-    }
-
     protected function _createProvider()
     {
         return new Autowp\OAuth2\Client\Provider\Vk([

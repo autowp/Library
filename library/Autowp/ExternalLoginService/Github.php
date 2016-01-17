@@ -1,24 +1,20 @@
 <?php
 
-class Autowp_ExternalLoginService_GooglePlus
+class Autowp_ExternalLoginService_Github
     extends Autowp_ExternalLoginService_LeagueOAuth2
 {
     protected function _createProvider()
     {
-        return new League\OAuth2\Client\Provider\Google([
+        return new League\OAuth2\Client\Provider\Github([
             'clientId'     => $this->_options['clientId'],
             'clientSecret' => $this->_options['clientSecret'],
-            'redirectUri'  => $this->_options['redirect_uri'],
-            'userFields'   => ['id', 'displayName', 'url', 'image(url)']
-            //'hostedDomain' => 'example.com',
+            'redirectUri'  => $this->_options['redirect_uri']
         ]);
     }
 
     protected function _getAuthorizationUrl()
     {
-        return $this->_getProvider()->getAuthorizationUrl(array(
-            'scope' => 'https://www.googleapis.com/auth/plus.me'
-        ));
+        return $this->_getProvider()->getAuthorizationUrl();
     }
 
     /**
@@ -29,24 +25,14 @@ class Autowp_ExternalLoginService_GooglePlus
     {
         $provider = $this->_getProvider();
 
-        $data = array(
-            'externalId' => null,
-            'name'       => null,
-            'profileUrl' => null,
-            'photoUrl'   => null
-        );
-
         $ownerDetails = $provider->getResourceOwner($this->_accessToken);
-
-        $ownerDetailsArray = $ownerDetails->toArray();
-
-        $data['externalId'] = $ownerDetailsArray['id'];
+        $data = $ownerDetails->toArray();
 
         return new Autowp_ExternalLoginService_Result(array(
-            'externalId' => $ownerDetailsArray['id'],
-            'name'       => $ownerDetailsArray['displayName'],
-            'profileUrl' => $ownerDetailsArray['url'],
-            'photoUrl'   => $ownerDetailsArray['image']['url']
+            'externalId' => $data['id'],
+            'name'       => $data['name'],
+            'profileUrl' => $data['html_url'],
+            'photoUrl'   => $data['avatar_url']
         ));
     }
 

@@ -8,6 +8,11 @@ abstract class Autowp_ExternalLoginService_Abstract
     protected $_options;
 
     /**
+     * @return string
+     */
+    abstract public function getState();
+
+    /**
      * @param array $options
      * @return string
      */

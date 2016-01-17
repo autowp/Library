@@ -20,6 +20,11 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
      */
     protected $_accessToken = null;
 
+    /**
+     * @var string
+     */
+    private $_state = null;
+
     protected function _getSession()
     {
         return $this->_session ? $this->_session : $this->_session = new Zend_Session_Namespace(
@@ -46,6 +51,11 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
         return $this->_consumer;
     }
 
+    public function getState()
+    {
+        return $this->_state;
+    }
+
     /**
      *
      * @param array $options
@@ -56,7 +66,12 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
         $consumer = $this->getConsumer(array(
             'redirect_uri' => $this->_options['redirect_uri']
         ));
-        $this->_getSession()->requestToken = $consumer->getRequestToken();
+
+        $requestToken = $consumer->getRequestToken();
+
+        $this->_state = $requestToken->getToken();
+
+        $this->_getSession()->requestToken = $requestToken;
         return $consumer->getRedirectUrl();
     }
 

@@ -10,8 +10,6 @@ class Autowp_ExternalLoginService_Facebook
             'clientSecret'    => $this->_options['clientSecret'],
             'redirectUri'     => $this->_options['redirect_uri'],
             'graphApiVersion' => 'v2.5',
-            //'userFields'   => ['id', 'displayName', 'url', 'image(url)']
-            //'hostedDomain' => 'example.com',
         ]);
     }
 
@@ -20,36 +18,11 @@ class Autowp_ExternalLoginService_Facebook
         return $this->_getProvider()->getAuthorizationUrl();
     }
 
-
-    /**
-     * @var Autowp_Service_Facebook
-     */
-    //protected $_facebook = null;
-
     /**
      * @var string
      */
     protected $_imageUrlTemplate =
         'https://graph.facebook.com/%s/picture?type=large';
-
-    /**
-     * @return Autowp_Service_Facebook
-     */
-    /*protected function _getFacebook()
-    {
-        if ($this->_facebook === null) {
-            $this->_facebook = new Autowp_Service_Facebook($this->_options);
-        }
-        return $this->_facebook;
-    }*/
-
-    /**
-     * @return Zend_Session_Namespace
-     */
-    protected function _getOauthSession()
-    {
-        return new Zend_Session_Namespace(__CLASS__);
-    }
 
     /**
      * @param array $options
@@ -62,32 +35,6 @@ class Autowp_ExternalLoginService_Facebook
             'redirect_uri' => $options['redirect_uri']
         ));*/
     }
-
-    /**
-     * @param array $options
-     * @return string
-     */
-    /*public function getLoginUrl(array $options)
-    {
-        $this->_getFacebook()
-            ->setPermission(Autowp_Service_Facebook::PERMISSION_LOCATION)
-            ->setPermission(Autowp_Service_Facebook::PERMISSION_BIRTHDAY);
-        return $this->_getFacebook()->getLoginUrl(array(
-            'redirect_uri' => $options['redirect_uri']
-        ));
-    }*/
-
-    /**
-     * @param array $params
-     */
-    /*public function callback(array $params)
-    {
-        $facebook = $this->_getFacebook();
-
-        $redirectUri = $params['redirect_uri'];
-        unset($params['redirect_uri']);
-        return $facebook->getAccessToken($params, $redirectUri);
-    }*/
 
     /**
      * @see Autowp_ExternalLoginService_Abstract::getData()
@@ -135,17 +82,6 @@ class Autowp_ExternalLoginService_Facebook
         }
         return new Autowp_ExternalLoginService_Result($data);
     }
-
-    /**
-     * @param string $accessToken
-     * @return Autowp_ExternalLoginService_Facebook
-     */
-    /*public function setAccessToken($accessToken)
-    {
-        $this->_getFacebook()->setAccessToken($accessToken);
-
-        return $this;
-    }*/
 
     /**
      * @see Autowp_ExternalLoginService_Abstract::getFriends()
