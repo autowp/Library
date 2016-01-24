@@ -79,6 +79,11 @@ class Autowp_Service_ImageStorage
     protected $_imageSampler = null;
 
     /**
+     * @var boll
+     */
+    private $_forceHttps = false;
+
+    /**
      * @param array $options
      * @throws Autowp_Service_ImageStorage_Exception
      */
@@ -103,6 +108,17 @@ class Autowp_Service_ImageStorage
                 $this->_raise("Unexpected option '$key'");
             }
         }
+
+        return $this;
+    }
+
+    /**
+     * @param bool $value
+     * @return Autowp_Service_ImageStorage
+     */
+    public function setForceHttps($value)
+    {
+        $this->_forceHttps = (bool)$value;
 
         return $this;
     }
@@ -375,6 +391,10 @@ class Autowp_Service_ImageStorage
             $path = str_replace('+', '%2B', $imageRow->filepath);
 
             $src = $dirUrl . $path;
+        }
+
+        if ($this->_forceHttps) {
+            $src = preg_replace("/^http:/i", "https:", $src);
         }
 
         return new Autowp_Service_ImageStorage_Image(array(
@@ -1279,5 +1299,34 @@ class Autowp_Service_ImageStorage
         $imageRow->save();
 
         return $imageRow->id;
+    }
+
+    public function flop($imageId)
+    {
+        $imageRow = $this->_getImageRow($imageId);
+        if (!$imageRow) {
+            return $this->_raise("Image `$imageId` not found");
+        }
+
+        $dir = $this->getDir($imageRow->dir);
+        if (!$dir) {
+            $this->_raise("Dir '{$imageRow->dir}' not defined");
+        }
+
+        $filePath = $dir->getPath() . DIRECTORY_SEPARATOR . $imageRow->filepath;
+
+        $imagick = new Imagick();
+        $imagick->readImage($filePath);
+
+        // format
+        $imagick->flopImage();
+
+        $imagick->writeImage($filePath);
+
+        $imagick->clear();
+
+        $this->flush(array(
+            'image' => $imageId
+        ));
     }
 }
