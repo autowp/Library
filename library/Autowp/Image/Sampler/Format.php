@@ -1,11 +1,15 @@
 <?php
 
+namespace Autowp\Image\Sampler;
+
+use Autowp\Image\Sampler\Exception;
+
 /**
  * @author dima
  *
  * @desc Represents a image formating rules
  */
-class Autowp_Image_Sampler_Format
+class Format
 {
     const
         FIT_TYPE_INNER = '0', // вписать
@@ -15,76 +19,76 @@ class Autowp_Image_Sampler_Format
     /**
      * @var int
      */
-    protected $_fitType;
+    private $_fitType;
 
     /**
      * @var int
      */
-    protected $_width;
+    private $_width;
 
     /**
      * @var int
      */
-    protected $_height;
+    private $_height;
 
     /**
      * @var string
      */
-    protected $_background;
+    private $_background;
 
     /**
      * @var int
      */
-    protected $_cropLeft;
+    private $_cropLeft;
 
     /**
      * @var int
      */
-    protected $_cropTop;
+    private $_cropTop;
 
     /**
      * @var int
      */
-    protected $_cropWidth;
+    private $_cropWidth;
 
     /**
      * @var int
      */
-    protected $_cropHeight;
+    private $_cropHeight;
 
     /**
      * @var boolean
      */
-    protected $_ignoreCrop = false;
+    private $_ignoreCrop = false;
 
     /**
      * @var boolean
      */
-    protected $_proportionalCrop = false;
+    private $_proportionalCrop = false;
 
     /**
      * @bool
      */
-    protected $_reduceOnly = false;
+    private $_reduceOnly = false;
 
     /**
      * @var bool
      */
-    protected $_strip = false;
+    private $_strip = false;
 
     /**
      * @var int
      */
-    protected $_quality = 0;
+    private $_quality = 0;
 
     /**
      * @var string
      */
-    protected $_format = null;
+    private $_format = null;
 
     /**
      * @param array $options
-     * @throws Autowp_Image_Sampler_Exception
+     * @throws Exception
      */
     public function __construct(array $options = array())
     {
@@ -93,8 +97,8 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param array $options
-     * @return Autowp_Image_Sampler_Format
-     * @throws Autowp_Image_Sampler_Exception
+     * @return Format
+     * @throws Exception
      */
     public function setOptions(array $options)
     {
@@ -113,7 +117,7 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param string $value
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setFormat($value)
     {
@@ -160,7 +164,7 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param int $value
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setQuality($value)
     {
@@ -184,7 +188,7 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param bool $value
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setStrip($value)
     {
@@ -203,7 +207,7 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param bool $reduceOnly
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setReduceOnly($reduceOnly)
     {
@@ -222,8 +226,8 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param int $fitType
-     * @throws Autowp_Image_Sampler_Exception
-     * @return Autowp_Image_Sampler_Format
+     * @throws Exception
+     * @return Format
      */
     public function setFitType($fitType)
     {
@@ -253,8 +257,8 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param int $width
-     * @throws Autowp_Image_Sampler_Exception
-     * @return Autowp_Image_Sampler_Format
+     * @throws Exception
+     * @return Format
      */
     public function setWidth($width)
     {
@@ -278,8 +282,8 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param int $height
-     * @throws Autowp_Image_Sampler_Exception
-     * @return Autowp_Image_Sampler_Format
+     * @throws Exception
+     * @return Format
      */
     public function setHeight($height)
     {
@@ -303,8 +307,8 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param string $color
-     * @throws Autowp_Image_Sampler_Exception
-     * @return Autowp_Image_Sampler_Format
+     * @throws Exception
+     * @return Format
      */
     public function setBackground($color)
     {
@@ -323,7 +327,7 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param array $crop
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setCrop(array $crop)
     {
@@ -352,7 +356,7 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param int $value
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setCropLeft($value)
     {
@@ -367,7 +371,7 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param int $value
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setCropTop($value)
     {
@@ -382,7 +386,7 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param int $value
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setCropWidth($value)
     {
@@ -397,7 +401,7 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param int $value
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setCropHeight($value)
     {
@@ -428,7 +432,7 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param boolean $value
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setIgnoreCrop($value)
     {
@@ -447,7 +451,7 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param boolean $value
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setProportionalCrop($value)
     {
@@ -466,10 +470,10 @@ class Autowp_Image_Sampler_Format
 
     /**
      * @param string $message
-     * @throws Autowp_Image_Sampler_Exception
+     * @throws Exception
      */
     protected function _raise($message)
     {
-        throw new Autowp_Image_Sampler_Exception($message);
+        throw new Exception($message);
     }
 }

@@ -1,13 +1,22 @@
 <?php
 
-class Autowp_Image_Sampler
+namespace Autowp\Image;
+
+use Imagick;
+use ImagickDraw;
+use ImagickPixel;
+
+use Autowp\Image\Sampler\Format;
+use Autowp\Image\Sampler\Exception;
+
+class Sampler
 {
     /**
      * @param Imagick $imagick
-     * @param Autowp_Image_Sampler_Format $format
+     * @param Format $format
      */
-    protected function _convertByInnerFit(Imagick $imagick,
-        Autowp_Image_Sampler_Format $format)
+    private function _convertByInnerFit(Imagick $imagick,
+        Format $format)
     {
         $srcWidth = $imagick->getImageWidth();
         $srcHeight = $imagick->getImageHeight();
@@ -66,10 +75,10 @@ class Autowp_Image_Sampler
 
     /**
      * @param Imagick $imagick
-     * @param Autowp_Image_Sampler_Format $format
+     * @param Format $format
      */
-    protected function _convertByOuterFit(Imagick $imagick,
-        Autowp_Image_Sampler_Format $format)
+    private function _convertByOuterFit(Imagick $imagick,
+        Format $format)
     {
         $srcWidth = $imagick->getImageWidth();
         $srcHeight = $imagick->getImageHeight();
@@ -128,10 +137,10 @@ class Autowp_Image_Sampler
 
     /**
      * @param Imagick $imagick
-     * @param Autowp_Image_Sampler_Format $format
+     * @param Format $format
      */
-    protected function _convertByMaximumFit(Imagick $imagick,
-        Autowp_Image_Sampler_Format $format)
+    private function _convertByMaximumFit(Imagick $imagick,
+        Format $format)
     {
         $srcWidth = $imagick->getImageWidth();
         $srcHeight = $imagick->getImageHeight();
@@ -182,10 +191,10 @@ class Autowp_Image_Sampler
 
     /**
      * @param Imagick $imagick
-     * @param Autowp_Image_Sampler_Format $format
+     * @param Format $format
      */
-    protected function _convertByWidth(Imagick $imagick,
-        Autowp_Image_Sampler_Format $format)
+    private function _convertByWidth(Imagick $imagick,
+        Format $format)
     {
         $srcWidth = $imagick->getImageWidth();
         $srcRatio = $srcWidth / $imagick->getImageHeight();
@@ -205,10 +214,10 @@ class Autowp_Image_Sampler
 
     /**
      * @param Imagick $imagick
-     * @param Autowp_Image_Sampler_Format $format
+     * @param Format $format
      */
-    protected function _convertByHeight(Imagick $imagick,
-        Autowp_Image_Sampler_Format $format)
+    private function _convertByHeight(Imagick $imagick,
+        Format $format)
     {
         $srcHeight = $imagick->getImageHeight();
         $srcRatio = $imagick->getImageWidth() / $srcHeight;
@@ -232,14 +241,14 @@ class Autowp_Image_Sampler
 
     /**
      * @param Imagick $source
-     * @param array|Autowp_Image_Sampler_Format $format
-     * @throws Autowp_Image_Sampler_Exception
+     * @param array|Format $format
+     * @throws Exception
      */
     public function convertImagick(Imagick $imagick, $format)
     {
-        if (!$format instanceof Autowp_Image_Sampler_Format) {
+        if (!$format instanceof Format) {
             if (is_array($format)) {
-                $format = new Autowp_Image_Sampler_Format($format);
+                $format = new Format($format);
             } else {
                 return $this->_raise("Unexpected type of format");
             }
@@ -356,15 +365,15 @@ class Autowp_Image_Sampler
 
         if ($format->getWidth() && $format->getHeight()) {
             switch ($format->getFitType()) {
-                case Autowp_Image_Sampler_Format::FIT_TYPE_INNER:
+                case Format::FIT_TYPE_INNER:
                     $this->_convertByInnerFit($imagick, $format);
                     break;
 
-                case Autowp_Image_Sampler_Format::FIT_TYPE_OUTER:
+                case Format::FIT_TYPE_OUTER:
                     $this->_convertByOuterFit($imagick, $format);
                     break;
 
-                case Autowp_Image_Sampler_Format::FIT_TYPE_MAXIMUM:
+                case Format::FIT_TYPE_MAXIMUM:
                     $this->_convertByMaximumFit($imagick, $format);
                     break;
 
@@ -392,8 +401,8 @@ class Autowp_Image_Sampler
 
     /**
      * @param Imagick|string $source
-     * @param array|Autowp_Image_Sampler_Format $format
-     * @throws Autowp_Image_Sampler_Exception
+     * @param array|Format $format
+     * @throws Exception
      */
     public function convertToFile($source, $destFile, $format)
     {
@@ -532,9 +541,9 @@ class Autowp_Image_Sampler
 
     /**
      * @param Imagick $imagick
-     * @param Autowp_Image_Sampler_Format $format
+     * @param Format $format
      */
-    private function _extendVertical(Imagick $imagick, Autowp_Image_Sampler_Format $format)
+    private function _extendVertical(Imagick $imagick, Format $format)
     {
         $fRatio = $format->getWidth() / $format->getHeight();
 
@@ -598,9 +607,9 @@ class Autowp_Image_Sampler
 
     /**
      * @param Imagick $imagick
-     * @param Autowp_Image_Sampler_Format $format
+     * @param Format $format
      */
-    private function _extendHorizontal(Imagick $imagick, Autowp_Image_Sampler_Format $format)
+    private function _extendHorizontal(Imagick $imagick, Format $format)
     {
         $fRatio = $format->getWidth() / $format->getHeight();
 
@@ -665,10 +674,10 @@ class Autowp_Image_Sampler
 
     /**
      * @param string $message
-     * @throws Autowp_Image_Sampler_Exception
+     * @throws Exception
      */
-    protected function _raise($message)
+    private function _raise($message)
     {
-        throw new Autowp_Image_Sampler_Exception($message);
+        throw new Exception($message);
     }
 }

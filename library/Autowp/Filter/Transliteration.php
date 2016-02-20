@@ -1,10 +1,10 @@
 <?php
-/**
- * @see Zend_Filter_Interface
- */
-require_once 'Zend/Filter/Interface.php';
 
-class Autowp_Filter_Transliteration implements Zend_Filter_Interface
+namespace Autowp\Filter;
+
+use Zend_Filter_Interface;
+
+class Transliteration implements Zend_Filter_Interface
 {
     /**
      * Defined by Zend_Filter_Interface

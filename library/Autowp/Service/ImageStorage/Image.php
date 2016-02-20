@@ -1,26 +1,28 @@
 <?php
 
-class Autowp_Service_ImageStorage_Image
+namespace Autowp\Service\ImageStorage;
+
+class Image
 {
     /**
      * @var int
      */
-    protected $_width;
+    private $_width;
 
     /**
      * @var int
      */
-    protected $_height;
+    private $_height;
 
     /**
      * @var int
      */
-    protected $_filesize;
+    private $_filesize;
 
     /**
      * @var string
      */
-    protected $_src;
+    private $_src;
 
     /**
      * @param array $options

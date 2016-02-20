@@ -1,15 +1,17 @@
 <?php
 
+use Autowp\Service\ImageStorage;
+
 class Autowp_Application_Resource_Imagestorage
     extends Zend_Application_Resource_ResourceAbstract
 {
     /**
-     * @var Autowp_Service_ImageStorage
+     * @var ImageStorage
      */
-    protected $_imageStorage = null;
+    private $_imageStorage = null;
 
     /**
-     * @return Autowp_Service_ImageStorage
+     * @return ImageStorage
      */
     public function init()
     {
@@ -17,7 +19,7 @@ class Autowp_Application_Resource_Imagestorage
     }
 
     /**
-     * @return Autowp_Service_ImageStorage
+     * @return ImageStorage
      */
     public function getImageStorage()
     {
@@ -38,7 +40,7 @@ class Autowp_Application_Resource_Imagestorage
                 }
             }
 
-            $this->_imageStorage = new Autowp_Service_ImageStorage($options);
+            $this->_imageStorage = new ImageStorage($options);
         }
         return $this->_imageStorage;
     }

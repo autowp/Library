@@ -1,5 +1,9 @@
 <?php
 
-class Autowp_Image_Sampler_Exception extends Autowp_Exception
+namespace Autowp\Image\Sampler;
+
+use Autowp\Exception as AutowpException;
+
+class Exception extends AutowpException
 {
 }

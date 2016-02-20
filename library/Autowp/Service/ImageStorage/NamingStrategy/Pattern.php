@@ -1,21 +1,25 @@
 <?php
 
-require_once 'Autowp/Service/ImageStorage/NamingStrategy/Abstract.php';
+namespace Autowp\Service\ImageStorage\NamingStrategy;
 
-class Autowp_Service_ImageStorage_NamingStrategy_Pattern
-    extends Autowp_Service_ImageStorage_NamingStrategy_Abstract
+use Autowp\Filter\Filename\Safe;
+use Autowp\Service\ImageStorage\NamingStrategy\AbstractStrategy;
+use Autowp\Service\ImageStorage\Exception;
+
+class Pattern
+    extends AbstractStrategy
 {
-    protected $_notAllowedParts = array('.', '..');
+    private $_notAllowedParts = array('.', '..');
 
     /**
      * @param string $pattern
      * @return string
      */
-    protected function _normalizePattern($pattern)
+    private function _normalizePattern($pattern)
     {
         $pattern = preg_replace('|[' . preg_quote(DIRECTORY_SEPARATOR) . ']+|isu', DIRECTORY_SEPARATOR, $pattern);
 
-        $filter = new Autowp_Filter_Filename_Safe();
+        $filter = new Safe();
 
         $result = array();
         $patternComponents = explode(DIRECTORY_SEPARATOR, $pattern);
@@ -34,7 +38,7 @@ class Autowp_Service_ImageStorage_NamingStrategy_Pattern
     /**
      * @param string $dir
      * @param array $options
-     * @see Autowp_Service_ImageStorage_NamingStrategy_Abstract::generate()
+     * @see AbstractStrategy::generate()
      */
     public function generate(array $options = array())
     {
@@ -49,7 +53,7 @@ class Autowp_Service_ImageStorage_NamingStrategy_Pattern
 
         $dir = $this->getDir();
         if (!$dir) {
-            throw new Autowp_Service_ImageStorage_Exception("`dir` not initialized");
+            throw new Exception("`dir` not initialized");
         }
 
         $idx = 0;

@@ -1,27 +1,31 @@
 <?php
 
-require_once 'Autowp/Service/ImageStorage/NamingStrategy/Abstract.php';
+namespace Autowp\Service\ImageStorage\NamingStrategy;
 
-class Autowp_Service_ImageStorage_NamingStrategy_Serial
-    extends Autowp_Service_ImageStorage_NamingStrategy_Abstract
+use Autowp\Filter\Filename\Safe;
+use Autowp\Service\ImageStorage\Exception;
+use Autowp\Service\ImageStorage\NamingStrategy\AbstractStrategy;
+
+class Serial
+    extends AbstractStrategy
 {
     const ITEM_PER_DIR = 1000;
 
     /**
      * @var int
      */
-    protected $_deep = 0;
+    private $_deep = 0;
 
     /**
      * @param int $deep
-     * @throws Autowp_Service_ImageStorage_Exception
-     * @return Autowp_Service_ImageStorage_NamingStrategy_Serial
+     * @throws Exception
+     * @return Serial
      */
     public function setDeep($deep)
     {
         $deep = (int)$deep;
         if ($deep < 0) {
-            throw new Autowp_Service_ImageStorage_Exception("Deep cannot be < 0");
+            throw new Exception("Deep cannot be < 0");
         }
         $this->_deep = $deep;
 
@@ -42,7 +46,7 @@ class Autowp_Service_ImageStorage_NamingStrategy_Serial
      * @param  string $id Cache id
      * @return string Complete directory path
      */
-    protected function _path($index, $deep)
+    private function _path($index, $deep)
     {
         $chars = strlen(self::ITEM_PER_DIR - 1); // use log10, fkn n00b
         $path = '';
@@ -62,7 +66,7 @@ class Autowp_Service_ImageStorage_NamingStrategy_Serial
     /**
      * @param string $dir
      * @param array $options
-     * @see Autowp_Service_ImageStorage_NamingStrategy_Abstract::generate()
+     * @see AbstractStrategy::generate()
      */
     public function generate(array $options = array())
     {
@@ -80,12 +84,12 @@ class Autowp_Service_ImageStorage_NamingStrategy_Serial
 
         $dir = $this->getDir();
         if (!$dir) {
-            throw new Autowp_Service_ImageStorage_Exception("`dir` not initialized");
+            throw new Exception("`dir` not initialized");
         }
 
         $dirPath = $this->_path($index, $this->_deep);
 
-        $filter = new Autowp_Filter_Filename_Safe();
+        $filter = new Safe();
 
         if ($options['prefferedName']) {
             $fileBasename = $filter->filter($options['prefferedName']);

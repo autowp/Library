@@ -1,6 +1,10 @@
 <?php
 
-class Autowp_Service_ImageStorage_DbTable_Dir extends Zend_Db_Table_Abstract
+namespace Autowp\Service\ImageStorage\DbTable;
+
+use Zend_Db_Table_Abstract;
+
+class Dir extends Zend_Db_Table_Abstract
 {
 
 }

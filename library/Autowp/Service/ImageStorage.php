@@ -1,9 +1,30 @@
 <?php
 
+namespace Autowp\Service;
+
+use Imagick;
+use Closure;
+
+use Zend_Db_Adapter_Abstract;
+use Zend_Db_Exception;
+use Zend_Db_Expr;
+use Zend_Db_Table_Abstract;
+use Zend_Db_Table_Row;
+
+use Autowp\Image\Sampler;
+use Autowp\Image\Sampler\Format;
+use Autowp\Service\ImageStorage\DbTable\Image as ImageTable;
+use Autowp\Service\ImageStorage\DbTable\FormatedImage as FormatedImageTable;
+use Autowp\Service\ImageStorage\DbTable\Dir as DirTable;
+use Autowp\Service\ImageStorage\Dir;
+use Autowp\Service\ImageStorage\Exception;
+use Autowp\Service\ImageStorage\Image;
+use Autowp\Service\ImageStorage\Request;
+
 /**
  * @author dima
  */
-class Autowp_Service_ImageStorage
+class ImageStorage
 {
     const EXTENSION_DEFAULT = 'jpg';
 
@@ -19,7 +40,7 @@ class Autowp_Service_ImageStorage
     protected $_db = null;
 
     /**
-     * @var Autowp_Service_ImageStorage_DbTable_Image
+     * @var ImageTable
      */
     protected $_imageTable = null;
 
@@ -29,7 +50,7 @@ class Autowp_Service_ImageStorage
     protected $_imageTableName = 'image';
 
     /**
-     * @var Autowp_Service_ImageStorage_DbTable_FormatedImage
+     * @var FormatedImageTable
      */
     protected $_formatedImageTable = null;
 
@@ -39,7 +60,7 @@ class Autowp_Service_ImageStorage
     protected $_formatedImageTableName = 'formated_image';
 
     /**
-     * @var Autowp_Service_ImageStorage_DbTable_Dir
+     * @var DirTable
      */
     protected $_dirTable = null;
 
@@ -74,13 +95,13 @@ class Autowp_Service_ImageStorage
     protected $_formatedImageDirName = null;
 
     /**
-     * @var Autowp_Image_Sampler
+     * @var Sampler
      */
     protected $_imageSampler = null;
 
     /**
      * @param array $options
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     public function __construct(array $options = array())
     {
@@ -89,8 +110,8 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param array $options
-     * @return Autowp_Service_ImageStorage
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @return ImageStorage
+     * @throws Exception
      */
     public function setOptions(array $options)
     {
@@ -109,7 +130,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string $tableName
-     * @return Autowp_Service_ImageStorage
+     * @return ImageStorage
      */
     public function setImageTableName($tableName)
     {
@@ -119,15 +140,15 @@ class Autowp_Service_ImageStorage
     }
 
     /**
-     * @param array|Autowp_Image_Sampler $options
-     * @return Autowp_Service_ImageStorage
+     * @param array|Sampler $options
+     * @return ImageStorage
      */
     public function setImageSampler($options)
     {
-        if ($options instanceof Autowp_Image_Sampler) {
+        if ($options instanceof Sampler) {
             $imageSampler = $options;
         } elseif (is_array($options)) {
-            $imageSampler = new Autowp_Image_Sampler($options);
+            $imageSampler = new Sampler($options);
         } else {
             $message = "Unexpected imageSampler options. Array or object excepcted";
             return $this->_raise($message);
@@ -139,7 +160,7 @@ class Autowp_Service_ImageStorage
     }
 
     /**
-     * @return Autowp_Image_Sampler
+     * @return Sampler
      */
     public function getImageSampler()
     {
@@ -151,7 +172,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string $tableName
-     * @return Autowp_Service_ImageStorage
+     * @return ImageStorage
      */
     public function setFormatedImageTableName($tableName)
     {
@@ -162,7 +183,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string $tableName
-     * @return Autowp_Service_ImageStorage
+     * @return ImageStorage
      */
     public function setDirTableName($tableName)
     {
@@ -173,7 +194,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param Zend_Db_Adapter_Abstract $dbAdapter
-     * @return Autowp_Service_ImageStorage
+     * @return ImageStorage
      */
     public function setDbAdapter(Zend_Db_Adapter_Abstract $dbAdapter)
     {
@@ -184,7 +205,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string|int $mode
-     * @return Autowp_Service_ImageStorage
+     * @return ImageStorage
      */
     public function setFileMode($mode)
     {
@@ -195,7 +216,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string|int $mode
-     * @return Autowp_Service_ImageStorage
+     * @return ImageStorage
      */
     public function setDirMode($mode)
     {
@@ -206,7 +227,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param array $dirs
-     * @return Autowp_Service_ImageStorage
+     * @return ImageStorage
      */
     public function setDirs($dirs)
     {
@@ -221,17 +242,17 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string $dirName
-     * @param Autowp_Service_ImageStorage_Dir|mixed $dir
-     * @return Autowp_Service_ImageStorage
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @param Dir|mixed $dir
+     * @return ImageStorage
+     * @throws Exception
      */
     public function addDir($dirName, $dir)
     {
         if (isset($this->_dirs[$dirName])) {
             $this->_raise("Dir '$dirName' alredy registered");
         }
-        if (!$dir instanceof Autowp_Service_ImageStorage_Dir) {
-            $dir = new Autowp_Service_ImageStorage_Dir($dir);
+        if (!$dir instanceof Dir) {
+            $dir = new Dir($dir);
         }
         $this->_dirs[$dirName] = $dir;
 
@@ -240,7 +261,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string $dirName
-     * @return Autowp_Service_ImageStorage_Dir
+     * @return Dir
      */
     public function getDir($dirName)
     {
@@ -249,7 +270,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param array $formats
-     * @return Autowp_Service_ImageStorage
+     * @return ImageStorage
      */
     public function setFormats($formats)
     {
@@ -264,17 +285,17 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string $formatName
-     * @param Autowp_Image_Sampler_Format|mixed $format
-     * @return Autowp_Service_ImageStorage
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @param Format|mixed $format
+     * @return ImageStorage
+     * @throws Exception
      */
     public function addFormat($formatName, $format)
     {
         if (isset($this->_formats[$formatName])) {
             $this->_raise("Format '$formatName' alredy registered");
         }
-        if (!$format instanceof Autowp_Image_Sampler_Format) {
-            $format = new Autowp_Image_Sampler_Format($format);
+        if (!$format instanceof Format) {
+            $format = new Format($format);
         }
         $this->_formats[$formatName] = $format;
 
@@ -283,7 +304,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string $dirName
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function getFormat($formatName)
     {
@@ -292,7 +313,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string $dirName
-     * @return Autowp_Service_ImageStorage
+     * @return ImageStorage
      */
     public function setFormatedImageDirName($dirName)
     {
@@ -303,20 +324,20 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string $message
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     protected function _raise($message)
     {
-        throw new Autowp_Service_ImageStorage_Exception($message);
+        throw new Exception($message);
     }
 
     /**
-     * @return Autowp_Service_ImageStorage_DbTable_Image
+     * @return ImageTable
      */
     protected function _getImageTable()
     {
         if (null === $this->_imageTable) {
-            $this->_imageTable = new Autowp_Service_ImageStorage_DbTable_Image(array(
+            $this->_imageTable = new ImageTable(array(
                 Zend_Db_Table_Abstract::ADAPTER => $this->_db,
                 Zend_Db_Table_Abstract::NAME    => $this->_imageTableName,
             ));
@@ -326,12 +347,12 @@ class Autowp_Service_ImageStorage
     }
 
     /**
-     * @return Autowp_Service_ImageStorage_DbTable_FormatedImage
+     * @return FormatedImageTable
      */
     protected function _getFormatedImageTable()
     {
         if (null === $this->_formatedImageTable) {
-            $this->_formatedImageTable = new Autowp_Service_ImageStorage_DbTable_FormatedImage(array(
+            $this->_formatedImageTable = new FormatedImageTable(array(
                 Zend_Db_Table_Abstract::ADAPTER => $this->_db,
                 Zend_Db_Table_Abstract::NAME    => $this->_formatedImageTableName,
             ));
@@ -341,12 +362,12 @@ class Autowp_Service_ImageStorage
     }
 
     /**
-     * @return Autowp_Service_ImageStorage_DbTable_Dir
+     * @return DirTable
      */
     protected function _getDirTable()
     {
         if (null === $this->_dirTable) {
-            $this->_dirTable = new Autowp_Service_ImageStorage_DbTable_Dir(array(
+            $this->_dirTable = new DirTable(array(
                 Zend_Db_Table_Abstract::ADAPTER => $this->_db,
                 Zend_Db_Table_Abstract::NAME    => $this->_dirTableName,
             ));
@@ -357,8 +378,8 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param Zend_Db_Table_Row $imageRow
-     * @return Autowp_Service_ImageStorage_Image
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @return Image
+     * @throws Exception
      */
     protected function _buildImageResult(Zend_Db_Table_Row $imageRow)
     {
@@ -377,7 +398,7 @@ class Autowp_Service_ImageStorage
             $src = $dirUrl . $path;
         }
 
-        return new Autowp_Service_ImageStorage_Image(array(
+        return new Image(array(
             'width'    => $imageRow->width,
             'height'   => $imageRow->height,
             'src'      => $src,
@@ -388,7 +409,7 @@ class Autowp_Service_ImageStorage
     /**
      * @param Zend_Db_Table_Row $imageRow
      * @return string
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     protected function _buildImageBlobResult(Zend_Db_Table_Row $imageRow)
     {
@@ -409,7 +430,7 @@ class Autowp_Service_ImageStorage
     /**
      * @param int $imageId
      * @return Zend_Db_Table_Row
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     protected function _getImageRow($imageId)
     {
@@ -428,7 +449,7 @@ class Autowp_Service_ImageStorage
     /**
      * @param array $imageIds
      * @return Zend_Db_Table_Row
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     protected function _getImageRows(array $imageIds)
     {
@@ -444,8 +465,8 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param int $imageId
-     * @return Autowp_Service_ImageStorage_Image
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @return Image
+     * @throws Exception
      */
     public function getImage($imageId)
     {
@@ -456,8 +477,8 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param array $imageIds
-     * @return Autowp_Service_ImageStorage_Image
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @return Image
+     * @throws Exception
      */
     public function getImages(array $imageIds)
     {
@@ -472,7 +493,7 @@ class Autowp_Service_ImageStorage
     /**
      * @param int $imageId
      * @return string
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     public function getImageBlob($imageId)
     {
@@ -487,8 +508,8 @@ class Autowp_Service_ImageStorage
 
         $imagesId = array();
         foreach ($requests as $request) {
-            if (!$request instanceof Autowp_Service_ImageStorage_Request) {
-                return $this->_raise('$requests is not array of Autowp_Service_ImageStorage_Request');
+            if (!$request instanceof Request) {
+                return $this->_raise('$requests is not array of Autowp\Service\ImageStorage\Request');
             }
             $imageId = $request->getImageId();
             if (!$imageId) {
@@ -546,7 +567,11 @@ class Autowp_Service_ImageStorage
                 $srcFilePath = $dir->getPath() . DIRECTORY_SEPARATOR . $imageRow->filepath;
 
                 $imagick = new Imagick();
-                $imagick->readImage($srcFilePath);
+                try {
+                    $imagick->readImage($srcFilePath);
+                } catch (ImagickException $e) {
+                    $this->_raise('Imagick: ' . $e->getMessage());
+                }
 
                 // format
                 $format = $this->getFormat($formatName);
@@ -614,11 +639,11 @@ class Autowp_Service_ImageStorage
     }
 
     /**
-     * @param Autowp_Service_ImageStorage_Request $request
+     * @param Request $request
      * @param string $formatName
      * @return Zend_Db_Table_Row
      */
-    protected function _getFormatedImageRow(Autowp_Service_ImageStorage_Request $request, $formatName)
+    protected function _getFormatedImageRow(Request $request, $formatName)
     {
         $result = $this->_getFormatedImageRows(array($request), $formatName);
 
@@ -630,14 +655,14 @@ class Autowp_Service_ImageStorage
     }
 
     /**
-     * @param int|Autowp_Service_ImageStorage_Request $imageId
+     * @param int|Request $imageId
      * @return string
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     public function getFormatedImageBlob($request, $formatName)
     {
-        if (!$request instanceof Autowp_Service_ImageStorage_Request) {
-            $request = new Autowp_Service_ImageStorage_Request(array(
+        if (!$request instanceof Request) {
+            $request = new Request(array(
                 'imageId' => $request
             ));
         }
@@ -648,16 +673,16 @@ class Autowp_Service_ImageStorage
     }
 
     /**
-     * @param int|Autowp_Service_ImageStorage_Request $request
+     * @param int|Request $request
      * @param string $format
-     * @return Autowp_Service_ImageStorage_Image
+     * @return Image
      */
     public function getFormatedImage($request, $formatName)
     {
         if (is_array($request)) {
-            $request = new Autowp_Service_ImageStorage_Request($request);
-        } elseif (!$request instanceof Autowp_Service_ImageStorage_Request) {
-            $request = new Autowp_Service_ImageStorage_Request(array(
+            $request = new Request($request);
+        } elseif (!$request instanceof Request) {
+            $request = new Request(array(
                 'imageId' => $request
             ));
         }
@@ -684,8 +709,8 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param int $imageId
-     * @return Autowp_Service_ImageStorage_Image
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @return Image
+     * @throws Exception
      */
     public function removeImage($imageId)
     {
@@ -736,7 +761,7 @@ class Autowp_Service_ImageStorage
      * @param string $ext
      * @param array $options
      * @return string
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     protected function _createImagePath($dirName, array $options = array())
     {
@@ -779,7 +804,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string $path
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     protected function _chmodFile($path)
     {
@@ -792,7 +817,7 @@ class Autowp_Service_ImageStorage
      * @param string $blob
      * @param string $dirName
      * @param array $options
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     public function addImageFromBlob($blob, $dirName, array $options = array())
     {
@@ -921,7 +946,7 @@ class Autowp_Service_ImageStorage
      * @param Imagick $imagick
      * @param string $dirName
      * @param array $options
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     public function addImageFromImagick(Imagick $imagick, $dirName, array $options = array())
     {
@@ -959,7 +984,7 @@ class Autowp_Service_ImageStorage
      * @param string $file
      * @param string $dirName
      * @param array $options
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     public function addImageFromFile($file, $dirName, array $options = array())
     {
@@ -1001,7 +1026,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param array $options
-     * @return Autowp_Service_ImageStorage
+     * @return ImageStorage
      */
     public function flush(array $options)
     {
@@ -1049,7 +1074,7 @@ class Autowp_Service_ImageStorage
 
     /**
      * @param string $dirName
-     * @return Autowp_Service_ImageStorage
+     * @return ImageStorage
      */
     public function incDirCounter($dirName)
     {

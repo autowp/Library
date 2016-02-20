@@ -1,6 +1,11 @@
 <?php
 
-class Autowp_Service_ImageStorage_Dir
+namespace Autowp\Service\ImageStorage;
+
+use Autowp\Service\ImageStorage\Exception;
+use Autowp\Service\ImageStorage\NamingStrategy\AbstractStrategy;
+
+class Dir
 {
     /**
      * @var string
@@ -13,13 +18,13 @@ class Autowp_Service_ImageStorage_Dir
     protected $_url;
 
     /**
-     * @var Autowp_Service_ImageStorage_NamingStrategy_Abstract
+     * @var AbstractStrategy
      */
     protected $_namingStrategy;
 
     /**
      * @param array $options
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     public function __construct(array $options = array())
     {
@@ -28,8 +33,8 @@ class Autowp_Service_ImageStorage_Dir
 
     /**
      * @param array $options
-     * @return Autowp_Service_ImageStorage_Dir
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @return Dir
+     * @throws Exception
      */
     public function setOptions(array $options)
     {
@@ -48,7 +53,7 @@ class Autowp_Service_ImageStorage_Dir
 
     /**
      * @param string $path
-     * @return Autowp_Service_ImageStorage_Dir
+     * @return Dir
      */
     public function setPath($path)
     {
@@ -77,7 +82,7 @@ class Autowp_Service_ImageStorage_Dir
 
     /**
      * @param string $url
-     * @return Autowp_Service_ImageStorage_Dir
+     * @return Dir
      */
     public function setUrl($url)
     {
@@ -99,13 +104,13 @@ class Autowp_Service_ImageStorage_Dir
     }
 
     /**
-     * @param string|array|Autowp_Service_ImageStorage_NamingStrategy_Abstract $strategy
-     * @throws Autowp_Service_ImageStorage_Exception
-     * @return Autowp_Service_ImageStorage_Dir
+     * @param string|array|AbstractStrategy $strategy
+     * @throws Exception
+     * @return Dir
      */
     public function setNamingStrategy($strategy)
     {
-        if (!$strategy instanceof Autowp_Service_ImageStorage_NamingStrategy_Abstract) {
+        if (!$strategy instanceof AbstractStrategy) {
             if (is_array($strategy)) {
                 $strategyName = $strategy['strategy'];
                 $options = isset($strategy['options']) ? $strategy['options'] : array();
@@ -114,9 +119,9 @@ class Autowp_Service_ImageStorage_Dir
                 $options = array();
             }
 
-            $className = 'Autowp_Service_ImageStorage_NamingStrategy_' . ucfirst($strategyName);
+            $className = 'Autowp\\Service\\ImageStorage\\NamingStrategy\\' . ucfirst($strategyName);
             $strategy = new $className($options);
-            if (!$strategy instanceof Autowp_Service_ImageStorage_NamingStrategy_Abstract) {
+            if (!$strategy instanceof AbstractStrategy) {
                 return $this->_raise("$className is not naming strategy");
             }
         }
@@ -129,7 +134,7 @@ class Autowp_Service_ImageStorage_Dir
     }
 
     /**
-     * @return Autowp_Service_ImageStorage_NamingStrategy_Abstract
+     * @return AbstractStrategy
      */
     public function getNamingStrategy()
     {
@@ -138,10 +143,10 @@ class Autowp_Service_ImageStorage_Dir
 
     /**
      * @param string $message
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     protected function _raise($message)
     {
-        throw new Autowp_Service_ImageStorage_Exception($message);
+        throw new Exception($message);
     }
 }

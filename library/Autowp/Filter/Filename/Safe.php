@@ -1,10 +1,11 @@
 <?php
-/**
- * @see Zend_Filter_Interface
- */
-require_once 'Zend/Filter/Interface.php';
 
-class Autowp_Filter_Filename_Safe implements Zend_Filter_Interface
+namespace Autowp\Filter\Filename;
+
+use Zend_Filter_Interface;
+use Autowp\Filter\Transliteration;
+
+class Safe implements Zend_Filter_Interface
 {
     protected $_replace = array (
         "№" => "N",
@@ -43,7 +44,7 @@ class Autowp_Filter_Filename_Safe implements Zend_Filter_Interface
      */
     public function filter($value)
     {
-        $transliteration = new Autowp_Filter_Transliteration();
+        $transliteration = new Transliteration();
 
         $value = $transliteration->filter($value);
         $value = mb_strtolower($value);

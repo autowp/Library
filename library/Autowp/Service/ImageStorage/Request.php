@@ -1,6 +1,11 @@
 <?php
 
-class Autowp_Service_ImageStorage_Request
+namespace Autowp\Service\ImageStorage;
+
+use Autowp\Image\Sampler\Format;
+use Autowp\Service\ImageStorage\Exception;
+
+class Request
 {
     private $_imageId;
 
@@ -26,7 +31,7 @@ class Autowp_Service_ImageStorage_Request
 
     /**
      * @param array $options
-     * @throws Autowp_Image_Sampler_Exception
+     * @throws Exception
      */
     public function __construct(array $options = array())
     {
@@ -35,8 +40,8 @@ class Autowp_Service_ImageStorage_Request
 
     /**
      * @param array $options
-     * @return Autowp_Image_Sampler_Format
-     * @throws Autowp_Image_Sampler_Exception
+     * @return Format
+     * @throws Exception
      */
     public function setOptions(array $options)
     {
@@ -55,7 +60,7 @@ class Autowp_Service_ImageStorage_Request
 
     /**
      * @param int $imageId
-     * @return Autowp_Service_ImageStorage_Request
+     * @return Request
      */
     public function setImageId($imageId)
     {
@@ -74,7 +79,7 @@ class Autowp_Service_ImageStorage_Request
 
     /**
      * @param array $crop
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setCrop(array $crop)
     {
@@ -103,7 +108,7 @@ class Autowp_Service_ImageStorage_Request
 
     /**
      * @param int $value
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setCropLeft($value)
     {
@@ -118,7 +123,7 @@ class Autowp_Service_ImageStorage_Request
 
     /**
      * @param int $value
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setCropTop($value)
     {
@@ -133,7 +138,7 @@ class Autowp_Service_ImageStorage_Request
 
     /**
      * @param int $value
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setCropWidth($value)
     {
@@ -148,7 +153,7 @@ class Autowp_Service_ImageStorage_Request
 
     /**
      * @param int $value
-     * @return Autowp_Image_Sampler_Format
+     * @return Format
      */
     public function setCropHeight($value)
     {
@@ -179,10 +184,10 @@ class Autowp_Service_ImageStorage_Request
 
     /**
      * @param string $message
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Exception
      */
     protected function _raise($message)
     {
-        throw new Autowp_Service_ImageStorage_Exception($message);
+        throw new Exception($message);
     }
 }

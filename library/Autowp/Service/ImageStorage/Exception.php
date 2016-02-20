@@ -1,5 +1,7 @@
 <?php
 
-class Autowp_Service_ImageStorage_Exception extends Autowp_Exception
+namespace Autowp\Service\ImageStorage;
+
+class Exception extends \Exception
 {
 }
