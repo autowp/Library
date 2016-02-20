@@ -39,4 +39,13 @@ class Autowp_ExternalLoginService_Factory
 
         return $serviceObj;
     }
+
+    public function getCallbackUrl()
+    {
+        if (!isset($this->_options['callback'])) {
+            throw new Exception('`callback` not set');
+        }
+
+        return $this->_options['callback'];
+    }
 }

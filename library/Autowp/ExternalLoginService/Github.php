@@ -17,6 +17,11 @@ class Autowp_ExternalLoginService_Github
         return $this->_getProvider()->getAuthorizationUrl();
     }
 
+    protected function _getFriendsAuthorizationUrl()
+    {
+        throw new Autowp_ExternalLoginService_Exception("Not implemented");
+    }
+
     /**
      * @see Autowp_ExternalLoginService_Abstract::getData()
      * @return Autowp_ExternalLoginService_Result
@@ -36,12 +41,12 @@ class Autowp_ExternalLoginService_Github
         ));
     }
 
-    public function getFriendsUrl(array $options)
+    public function getFriendsUrl()
     {
         throw new Autowp_ExternalLoginService_Exception("Not implemented");
     }
 
-    public function serviceFriends($token)
+    public function getFriends()
     {
         throw new Autowp_ExternalLoginService_Exception("Not implemented");
     }

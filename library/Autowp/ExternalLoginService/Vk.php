@@ -17,6 +17,11 @@ class Autowp_ExternalLoginService_Vk
         return $this->_getProvider()->getAuthorizationUrl();
     }
 
+    protected function _getFriendsAuthorizationUrl()
+    {
+        throw new Autowp_ExternalLoginService_Exception("Not implemented");
+    }
+
     /**
      * @see Autowp_ExternalLoginService_Abstract::getData()
      * @return Autowp_ExternalLoginService_Result
@@ -68,7 +73,7 @@ class Autowp_ExternalLoginService_Vk
         throw new Exception("Not implemented");
     }
 
-    public function getFriendsUrl(array $options)
+    public function getFriendsUrl()
     {
         throw new Exception("Not implemented");
     }

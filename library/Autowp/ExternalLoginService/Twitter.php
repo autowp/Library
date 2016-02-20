@@ -57,7 +57,6 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
     }
 
     /**
-     *
      * @param array $options
      * @return string
      */
@@ -76,21 +75,24 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
     }
 
     /**
-     *
      * @param array $options
      * @return string
      */
-    public function getFriendsUrl(array $options)
+    public function getFriendsUrl()
     {
         $consumer = $this->getConsumer(array(
             'redirect_uri' => $this->_options['redirect_uri']
         ));
-        $this->_getSession()->requestToken = $consumer->getRequestToken();
+
+        $requestToken = $consumer->getRequestToken();
+
+        $this->_state = $requestToken->getToken();
+
+        $this->_getSession()->requestToken = $requestToken;
         return $consumer->getRedirectUrl();
     }
 
     /**
-     *
      * @param array $params
      */
     public function callback(array $params)
@@ -132,7 +134,7 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
         $response = $twitter->account->verifyCredentials();
 
         if (!$response->isSuccess()) {
-            $message = 'Error requesting data';
+            $message = 'Error requesting data: ' . implode(', ', $response->getErrors());
             throw new Autowp_ExternalLoginService_Exception($message);
         }
 
@@ -152,15 +154,8 @@ class Autowp_ExternalLoginService_Twitter extends Autowp_ExternalLoginService_Ab
         return new Autowp_ExternalLoginService_Result($data);
     }
 
-    /**
-     *
-     * @see Autowp_ExternalLoginService_Abstract::getFriends()
-     * @return array Account_Row
-     */
-    public function serviceFriends($token)
+    public function getFriends()
     {
-        $this->_accessToken = $token;
-
         $twitter = new Zend_Service_Twitter(array(
             'username'     => $this->_accessToken->getParam('screen_name'),
             'accessToken'  => $this->_accessToken,

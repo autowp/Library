@@ -45,7 +45,7 @@ class Autowp_ExternalLoginService_Result
 
     /**
      * @param array $options
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Autowp_ExternalLoginService_Exception
      */
     public function __construct(array $options = array())
     {
@@ -55,7 +55,7 @@ class Autowp_ExternalLoginService_Result
     /**
      * @param array $options
      * @return Autowp_ExternalLoginService_Result
-     * @throws Autowp_Service_ImageStorage_Exception
+     * @throws Autowp_ExternalLoginService_Exception
      */
     public function setOptions(array $options)
     {
@@ -192,10 +192,10 @@ class Autowp_ExternalLoginService_Result
     }
 
     /**
-     * @param Zend_Date $birthday
+     * @param DateTime $birthday
      * @return Autowp_ExternalLoginService_Result
      */
-    public function setBirthday($birthday)
+    public function setBirthday(DateTime $birthday = null)
     {
         $this->_birthday = $birthday;
 
@@ -235,7 +235,7 @@ class Autowp_ExternalLoginService_Result
      */
     public function setGender($gender)
     {
-        $this->_gender= (int)$gender;
+        $this->_gender = $gender;
 
         return $this;
     }
@@ -246,5 +246,24 @@ class Autowp_ExternalLoginService_Result
     public function getGender()
     {
         return $this->_gender;
+    }
+
+    public function toArray()
+    {
+        return array(
+            'externalId' => $this->_externalId,
+            'name'       => $this->_name,
+            'profileUrl' => $this->_profileUrl,
+            'photoUrl'   => $this->_photoUrl,
+            'email'      => $this->_email,
+            'birthday'   => $this->_birthday,
+            'residence'  => $this->_residence,
+            'gender'     => $this->_gender
+        );
+    }
+
+    public static function fromArray(array $options)
+    {
+        return new self($options);
     }
 }

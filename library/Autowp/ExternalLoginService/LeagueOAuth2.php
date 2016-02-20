@@ -1,5 +1,7 @@
 <?php
 
+use League;
+
 abstract class Autowp_ExternalLoginService_LeagueOAuth2
     extends Autowp_ExternalLoginService_Abstract
 {
@@ -35,6 +37,11 @@ abstract class Autowp_ExternalLoginService_LeagueOAuth2
      */
     abstract protected function _getAuthorizationUrl();
 
+    /**
+     * @return string
+     */
+    abstract protected function _getFriendsAuthorizationUrl();
+
     public function getState()
     {
         return $this->_getProvider()->getState();
@@ -43,6 +50,11 @@ abstract class Autowp_ExternalLoginService_LeagueOAuth2
     public function getLoginUrl()
     {
         return $this->_getAuthorizationUrl();
+    }
+
+    public function getFriendsUrl()
+    {
+        return $this->_getFriendsAuthorizationUrl();
     }
 
     public function callback(array $params)

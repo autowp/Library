@@ -3,19 +3,28 @@
 class Autowp_ExternalLoginService_Facebook
     extends Autowp_ExternalLoginService_LeagueOAuth2
 {
+    private $_graphApiVersion = 'v2.5';
+
     protected function _createProvider()
     {
         return new League\OAuth2\Client\Provider\Facebook([
             'clientId'        => $this->_options['clientId'],
             'clientSecret'    => $this->_options['clientSecret'],
             'redirectUri'     => $this->_options['redirect_uri'],
-            'graphApiVersion' => 'v2.5',
+            'graphApiVersion' => $this->_graphApiVersion,
         ]);
     }
 
     protected function _getAuthorizationUrl()
     {
         return $this->_getProvider()->getAuthorizationUrl();
+    }
+
+    protected function _getFriendsAuthorizationUrl()
+    {
+        return $this->_getProvider()->getAuthorizationUrl([
+            'scope' => ['public_profile', 'user_friends']
+        ]);
     }
 
     /**
@@ -28,13 +37,13 @@ class Autowp_ExternalLoginService_Facebook
      * @param array $options
      * @return string
      */
-    public function getFriendsUrl(array $options)
+    /*public function getFriendsUrl(array $options)
     {
-        /*$this->_getFacebook()->setPermission(Autowp_Service_Facebook::PERMISSION_FRIENDS);
+        $this->_getFacebook()->setPermission(Autowp_Service_Facebook::PERMISSION_FRIENDS);
         return $this->_getFacebook()->getLoginUrl(array(
             'redirect_uri' => $options['redirect_uri']
-        ));*/
-    }
+        ));
+    }*/
 
     /**
      * @see Autowp_ExternalLoginService_Abstract::getData()
@@ -83,28 +92,37 @@ class Autowp_ExternalLoginService_Facebook
         return new Autowp_ExternalLoginService_Result($data);
     }
 
-    /**
-     * @see Autowp_ExternalLoginService_Abstract::getFriends()
-     * @return array Account_Row
-     */
-    public function serviceFriends ($token)
+    public function getFriends()
     {
-        /*
+        $provider = $this->_getProvider();
 
-
-        $this->_getFacebook()->setAccessToken($token);
+        if (!$this->_accessToken) {
+            throw new Exception("Access token not provided");
+        }
 
         $limit = 1000;
-        $url = '/me/friends?limit='.$limit.'&offset=0';
+        $url = 'https://graph.facebook.com/' . $this->_graphApiVersion . '/me/friends?' . http_build_query([
+            'limit'        => $limit,
+            'offset'       => 0,
+            'access_token' => $this->_accessToken->getToken()
+        ]);
+
         $friendsId = array();
         while (true) {
-            $response = $this->_getFacebook()->api($url);
+
+            $response = file_get_contents($url);
+            try {
+                $response = Zend_Json::decode($response);
+            } catch (Exception $e) {
+                $response = null;
+            }
+
             if ($response) {
-                foreach($response['data'] as $key => $value) {
+                foreach ($response['data'] as $key => $value) {
                     $friendsId[] = (string)$value['id'];
                 }
                 if (count($friendsId) == 0) break;
-                if (count($friendsId) == $limit && isset($response['paging']['next'])){
+                if (count($friendsId) == $limit && isset($response['paging']['next'])) {
                     $url = $response['paging']['next'];
                 } else {
                     break;
@@ -114,6 +132,6 @@ class Autowp_ExternalLoginService_Facebook
                 throw new Autowp_ExternalLoginService_Exception($message);
             }
         }
-        return $friendsId;*/
+        return $friendsId;
     }
 }
